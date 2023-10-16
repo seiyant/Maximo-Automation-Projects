@@ -1,7 +1,6 @@
 # InstantMaximo.py
 # 
-# This script intends to scrape daily maintenance logs in PDF 
-# and DOCX formats and enter the information into an Excel sheet
+# This script intends to check if a daily maintenance log status matches the Maximo status
 #
 # Author: Seiya Nozawa-Temchenko
-#################################################################
+##########################################################################################
