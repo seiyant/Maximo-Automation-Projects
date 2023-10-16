@@ -1,4 +1,4 @@
-# InstantMaximo.py
+# workOrderAutomation.py
 # 
 # This script intends to shorten paper log entry time on Maximo
 #
@@ -182,7 +182,7 @@ for workOrder in workOrders:
         print(f"Work Order {workOrder['number']} Regular Hours entered...")
         print(f"Work Order {workOrder['number']} Labor entered...")
     
-    # Improvement: create failsafe for when there is a mismatch in quantity
+    # Improvement: create failsafe for when there is a mismatch in quantity, first do return then do issue?
     for material in workOrder.get("materials",[]):
         go2Material = wait.until(EC.element_to_be_clickable((By.ID, "m5cf77a07_bg_button_addrow-pb_addrow_a")))
         go2Material.click()
@@ -205,9 +205,9 @@ for workOrder in workOrders:
     print(f"Work order {workOrder['number']} completed... Moving on")
 
     #backButton = wait.until(EC.element_to_be_clickable((By.ID, "toolactions_CLEAR-tbb")))
-    #backButton.click()
+    #backButton.click() '''
  
-browser.quit() ''' 
+#browser.quit()
 print("\n\nSeiya, out")
 '''
     try: #contains(@id, 'NAME') #By.NAME, 
