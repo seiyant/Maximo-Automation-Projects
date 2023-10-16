@@ -26,6 +26,7 @@ def inputRollback(prompt):
     
     return value
 
+# Improvement: add entry method for WPLAN and WSCHED in addition to RELEASED
 # Handles work order and SKIP command from user input
 def getOrderInfo():
     workOrder = {}
@@ -38,11 +39,12 @@ def getOrderInfo():
 
     workOrder["number"] = workOrder_number
 
+    # Improvement: add the option to create new line in the entry
     workOrder_log = inputRollback("Enter work log details (SKIP 'x', ROLLBACK 'xx'):")
     if workOrder_log != 'x':
         workOrder["log"] = workOrder_log
 
-# Name is based on a list of options
+    # Improvement: enter any name and using suggestion array, choose best option
     while True:
         workOrder_labor = inputRollback("Enter labor details (Name, Date, Hours) separated by commas (DONE 'd', SKIP 'x', ROLLBACK 'xx'):")
         if workOrder_labor == 'd':
@@ -76,7 +78,7 @@ def getOrderInfo():
     if workOrder_progress != 'x':
         workOrder["progress"] = 'DONE'
 
-    print(workOrder) #make pretty
+    print(workOrder) 
     return workOrder
 
 # Loop creating a list of work orders from singular work orders
@@ -88,10 +90,10 @@ while True:
         if workOrder == 'x':
             break
 
-# Append each filled workOrder to list of workOrders
+    # Append each filled workOrder to list of workOrders
         workOrders.append(workOrder)
 
-# Trigger for ROLLBACK
+    # Trigger for ROLLBACK
     except ValueError as e:
         print("\nRolling back the last work order entry...\n")
         continue
@@ -128,13 +130,13 @@ qrepElem = wait.until(EC.element_to_be_clickable((By.ID, "FavoriteApp_QUICKREP")
 actions.move_to_element_with_offset(qrepElem, 5, 5).click().perform()
 
 # Type and search for Work Orders
+# Improvement: add entry method for WPLAN and WSCHED in addition to RELEASED
 for workOrder in workOrders:
     searchWO_number = wait.until(EC.element_to_be_clickable((By.ID, "m6a7dfd2f_tfrow_[C:1]_txt-tb")))
     searchWO_number.send_keys(workOrder["number"])
     searchWO_number.send_keys(Keys.ENTER)
 
-    # create failsafes for more than one element and no elements
-
+    # Improvement: create failsafes no elements, go to Work Order Tracking
     first_workOrder = wait.until(EC.element_to_be_clickable((By.ID, "m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:0]")))
     first_workOrder.click()
 
@@ -149,10 +151,11 @@ for workOrder in workOrders:
         addDetails.send_keys(workOrder['log'])
         print(f"Work Order {workOrder['number']} Work Log Details entered...\n")
 
-    for labor in workOrder.get("labors",[]):
-        move2QR = wait.until(EC.element_to_be_clickable((By.ID, "m8ddd952b-tab")))
-        move2QR.click()
+    # Navigate to Quick Reporting tab
+    move2QR = wait.until(EC.element_to_be_clickable((By.ID, "m8ddd952b-tab")))
+    move2QR.click()
 
+    for labor in workOrder.get("labors",[]):
         go2Labor = wait.until(EC.element_to_be_clickable((By.ID, "mb6f8aa93_bg_button_addrow-pb_addrow_a")))
         go2Labor.click()
 
@@ -178,10 +181,23 @@ for workOrder in workOrders:
         garbage_value.click()
         print(f"Work Order {workOrder['number']} Regular Hours entered...")
         print(f"Work Order {workOrder['number']} Labor entered...")
+    
+    # Improvement: create failsafe for when there is a mismatch in quantity
+    for material in workOrder.get("materials",[]):
+        go2Material = wait.until(EC.element_to_be_clickable((By.ID, "m5cf77a07_bg_button_addrow-pb_addrow_a")))
+        go2Material.click()
 
-#amount is iffy, for now comment out this area
+        addItem = wait.until(EC.element_to_be_clickable((By.ID, "ma9a49433-tb")))
+        addItem.send_keys(material['item'])
+
+        addTransaction = wait.until(EC.element_to_be_clickable((By.ID, "m30adc589-tb")))
+        addTransaction.send_keys(material['transaction'])
+
+        addQuantity = wait.until(EC.element_to_be_clickable((By.ID, "ma012d818-tb")))
+        addQuantity.send_keys(material['quantity'])
+
     if "progress" in workOrder:
-        go2Progress = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/form/div/table[2]/tbody/tr/td/table/tbody/tr/td/table/tbody/tr/td/table/tbody/tr[2]/td/div/table/tbody/tr/td/div/table/tbody/tr/td/table/tbody/tr/td[2]/div/div[1]/div/table/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr[1]/td/div/table/tbody/tr[3]/td/table/tbody/tr/td[1]/div/table/tbody/tr/td/div/table/tbody/tr/td/table/tbody/tr[3]/td/div/table/tbody/tr/td/button")))
+        go2Progress = wait.until(EC.element_to_be_clickable((By.ID, "m8bb73832-pb")))
         go2Progress.click()
 '''        
     #saveButton = wait.until(EC.element_to_be_clickable(By.ID, "toolactions_SAVE-tbb")))
@@ -207,17 +223,3 @@ print("\n\nSeiya, out")
         except TimeoutException:
             print(f"\nNo work orders found for {workOrder['number']}. Skipping...\n")
             continue '''
-'''
-    for material in workOrder.get("materials",[]):
-        go2Material = wait.until(EC.element_to_be_clickable((By.ID, "m5cf77a07_bg_button_addrow-pb_addrow_a")))
-        go2Material.click()
-
-        addItem = wait.until(EC.element_to_be_clickable((By.ID, "ma9a49433-tb")))
-        addItem.send_keys(material['item'])
-
-        addTransaction = wait.until(EC.element_to_be_clickable((By.ID, "m30adc589-tb")))
-        addTransaction.send_keys(material['transaction'])
-
-        addQuantity = wait.until(EC.element_to_be_clickable((By.ID, "ma012d818-tb")))
-        addQuantity.send_keys(material['quantity'])
-'''
