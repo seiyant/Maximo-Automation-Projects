@@ -1,13 +1,13 @@
-Seiya Nozawa-Temchenko | @seiyant
+**Seiya Nozawa-Temchenko** | @seiyant
 
-maintenanceLogReader.py
+**maintenanceLogReader.py**
 
 This script intends to check if a daily maintenance log status matches the Maximo status.
 
 All work orders are logged onto a daily maintenance sheet in PDF or DOCX formats by the end of each day.
 This script checks whether each status logged on the daily maintenance sheet matches the status on Maximo.
 
-workOrderAutomation.py
+**workOrderAutomation.py**
 
 This script intends to shorten the paper log entry time on Maximo.
 
