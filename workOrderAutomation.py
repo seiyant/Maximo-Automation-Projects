@@ -96,13 +96,15 @@ while True:
         print("\nRolling back the last work order entry...\n")
         continue
 
-# Ensure your browser version and web driver version match
+# Ensure browser version and web driver version match
 browser = webdriver.Edge()
 actions = ActionChains(browser) 
 
+# Define wait
+wait = WebDriverWait(browser, 20)
+
 # Navigate to Maximo login page
 browser.get('https://prod.manage.prod.iko.max-it-eam.com/maximo') 
-wait = WebDriverWait(browser, 20)
 
 # Maximize window
 browser.maximize_window()
@@ -214,7 +216,7 @@ for workOrder in workOrders:
     print(f"Work order {workOrder['number']} completed... Moving on")
 
     #backButton = wait.until(EC.element_to_be_clickable((By.ID, "toolactions_CLEAR-tbb")))
-    #backButton.click() '''
+    #backButton.click()
  
 #browser.quit()
 print("\n\nSeiya, out")
