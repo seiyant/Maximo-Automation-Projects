@@ -12,8 +12,6 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import datetime, time
-import xlwings as xw 
 
 workOrders = []
 
@@ -75,7 +73,7 @@ def getOrderInfo():
     workOrder["materials"] = materials
 
     workOrder_progress = inputRollback("Enter progress (DONE 'd' or IN-PROGRESS 'x', ROLLBACK 'xx'):")
-    if workOrder_progress != 'x':
+    if workOrder_progress == 'd':
         workOrder["progress"] = 'DONE'
 
     print(workOrder) 
@@ -110,6 +108,7 @@ wait = WebDriverWait(browser, 20)
 browser.maximize_window()
 
 # Enter login information
+# Improvement: store username and password in a separate file
 UserElem = wait.until(EC.element_to_be_clickable((By.ID, "username")))
 UserElem.send_keys('NOZASEIY')
 
@@ -156,6 +155,7 @@ for workOrder in workOrders:
     move2QR.click()
 
     for labor in workOrder.get("labors",[]):
+        # Does not work for 2nd?
         go2Labor = wait.until(EC.element_to_be_clickable((By.ID, "mb6f8aa93_bg_button_addrow-pb_addrow_a")))
         go2Labor.click()
 
@@ -186,20 +186,29 @@ for workOrder in workOrders:
     for material in workOrder.get("materials",[]):
         go2Material = wait.until(EC.element_to_be_clickable((By.ID, "m5cf77a07_bg_button_addrow-pb_addrow_a")))
         go2Material.click()
+        garbage_value = wait.until(EC.element_to_be_clickable((By.ID, "ma9a49433-tb2")))
+        garbage_value.click()
 
         addItem = wait.until(EC.element_to_be_clickable((By.ID, "ma9a49433-tb")))
         addItem.send_keys(material['item'])
+        garbage_value = wait.until(EC.element_to_be_clickable((By.ID, "ma9a49433-tb2")))
+        garbage_value.click()
 
         addTransaction = wait.until(EC.element_to_be_clickable((By.ID, "m30adc589-tb")))
         addTransaction.send_keys(material['transaction'])
+        garbage_value = wait.until(EC.element_to_be_clickable((By.ID, "ma9a49433-tb2")))
+        garbage_value.click()
 
         addQuantity = wait.until(EC.element_to_be_clickable((By.ID, "ma012d818-tb")))
         addQuantity.send_keys(material['quantity'])
+        garbage_value = wait.until(EC.element_to_be_clickable((By.ID, "ma9a49433-tb2")))
+        garbage_value.click()
 
     if "progress" in workOrder:
-        go2Progress = wait.until(EC.element_to_be_clickable((By.ID, "m8bb73832-pb")))
-        go2Progress.click()
-'''        
+        workDone = browser.find_element(By.XPATH, "//button[text()='Work Done']")
+        action = ActionChains(browser)
+        action.move_to_element_with_offset(workDone, 5, 5).click().perform()
+        
     #saveButton = wait.until(EC.element_to_be_clickable(By.ID, "toolactions_SAVE-tbb")))
     #saveButton.click()
     print(f"Work order {workOrder['number']} completed... Moving on")
@@ -209,17 +218,3 @@ for workOrder in workOrders:
  
 #browser.quit()
 print("\n\nSeiya, out")
-'''
-    try: #contains(@id, 'NAME') #By.NAME, 
-        second_workOrder = wait.until(EC.visibility_of_element_located((By.ID, "m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:1]")))
-        print(f"\nMultiple work orders found for {workOrder['number']}. Skipping...\n")
-        continue 
-            
-    except TimeoutException:
-        try:
-            first_workOrder = wait.until(EC.element_to_be_clickable((By.ID, "m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:0]")))
-            first_workOrder.click()
-        
-        except TimeoutException:
-            print(f"\nNo work orders found for {workOrder['number']}. Skipping...\n")
-            continue '''
