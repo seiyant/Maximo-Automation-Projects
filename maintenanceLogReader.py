@@ -14,6 +14,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from PyPDF2 import PdfReader
 from docx import Document
+import datetime as time
 import xlwings as Excel
 
 # Ensure browser version and web driver version match
@@ -47,6 +48,26 @@ iframe = wait.until(EC.presence_of_element_located((By.XPATH, "/html/body/div/di
 browser.switch_to.frame(iframe)
 
 # Define function to read Word documents
+crew_details = []
+
+def extract_data_from_docx(file_path):
+    # Load docx file
+    docx = Document(file_path)
+
+    # Extract the date and format it
+    date_cell = docx.cell(1, 1).text
+    date_string = date_cell.split()
+    date_object = time.strptime(date_string, '%b %d, %Y')
+    format_date = date_object.strptime('%m/%d/%Y')
+
+    # Extract the crew list
+    for row in docx.rows[9:]:
+        name = row.cells[0].text
+        position = row.cells[1].text
+        aid = row.cells[3].text
+
+        if row.cells[2].text != "A":
+            crew_details.append((name, position, aid))
 
 # Define function to read PDF documents
 # Define function to fetch Maximo status using Selenium
