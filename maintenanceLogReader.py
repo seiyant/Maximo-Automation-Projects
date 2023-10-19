@@ -69,12 +69,6 @@ def extract_data_from_docx(file_path):
         if row.cells[2].text != "A":
             crew_details.append((name, position, aid))
 
-# Define function to read PDF documents
-def extract_data_from_pdf(file_path):
-    # Load pdf file
-    pdf = PdfReader(file_path)
-
-# Define function to read PDF documents
 # Define function to fetch Maximo status using Selenium
 # Define function to write to Excel
 # Main function or script execution
