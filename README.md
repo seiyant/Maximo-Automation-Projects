@@ -4,7 +4,7 @@
 
 This script intends to check if a daily maintenance log status matches the Maximo status.
 
-All work orders are logged onto a daily maintenance sheet in PDF or DOCX formats by the end of each day.
+All work orders are logged onto a daily maintenance sheet in DOCX format by the end of each day.
 This script checks whether each status logged on the daily maintenance sheet matches the status on Maximo.
 
 **workOrderAutomation.py**
