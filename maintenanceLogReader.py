@@ -14,37 +14,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from docx import Document
 import datetime
-import xlwings as Excel
-
-# Ensure browser version and web driver version match
-browser = webdriver.Edge()
-actions = ActionChains(browser) 
-
-# Define wait
-wait = WebDriverWait(browser, 20)
-
-# Navigate to Maximo login page
-browser.get('https://prod.manage.prod.iko.max-it-eam.com/maximo')   
-
-# Maximize window
-browser.maximize_window()
-
-# Enter login information
-UserElem = wait.until(EC.element_to_be_clickable((By.ID, "username")))
-UserElem.send_keys('NOZASEIY')
-
-Cont1Elem = browser.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div[2]/form/div[3]/button")
-Cont1Elem.click()
-
-passElem = wait.until(EC.element_to_be_clickable((By.ID, "password")))
-passElem.send_keys('Roofing1SN!') 
-
-Cont2Elem = browser.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div[2]/form/div[3]/button")
-Cont2Elem.click()
-
-# Navigate to Quick Reporting
-iframe = wait.until(EC.presence_of_element_located((By.XPATH, "/html/body/div/div[7]/iframe")))
-browser.switch_to.frame(iframe)
+import xlwings as xw
 
 # Extract the work details from the Word document
 def extract_data_from_docx(file_path):
@@ -59,6 +29,24 @@ def extract_data_from_docx(file_path):
     # Initialize an empty list to store the work details
     work_details = []
 
+    # Extract crew attendance details
+    crew_names = {}
+    nickname_initial_mapping = {
+        'William': 'B',
+        'Will': 'B',
+        'Robert': 'B'
+    }
+    for row in docx.tables[0].rows:
+        if row.cells[0].text == "Crew":
+            for crew_row in docx.tables[0].rows:
+                name = crew_row.cells[0].text
+                position = crew_row.cells[1].text
+                attendance = crew_row.cells[3].text
+                if attendance != "A":
+                    first_name, last_name = name.split()
+                    initials = first_name[0] + last_name[0]
+                    crew_names[initials] = name
+
     # Search for the row that contains "JOBS ASSIGNED TO" in column 0
     start_row_index = None
     for index, row in enumerate(docx.tables[0].rows):
@@ -72,29 +60,130 @@ def extract_data_from_docx(file_path):
             job_assigned_to = row.cells[0].text
             description = row.cells[1].text
             status = row.cells[2].text
-            work_details.append((job_assigned_to, description, status))
+
+            # Check if the initials match with crew names
+            if job_assigned_to == "Everyone":
+                name = "Everyone"
+            else:
+                assigned_names = []
+                # Split the initials by "/" and iterate through each one
+                for initial in job_assigned_to.split("/"):
+                    if initial in crew_names:
+                        assigned_names.append(crew_names[initial])
+                    else:
+                        # Check if name is one of the names with possible nickname
+                        for first_name, new_initial in nickname_initial_mapping.items():
+                            possible_initials = new_initial + job_assigned_to[1]
+                            if possible_initials in crew_names and first_name in crew_names[possible_initials]:
+                                assigned_names.append(crew_names[possible_initials])
+                                break
+                # else look in Excel sheet 
+
+                name = "/".join(assigned_names)
+            work_details.append((name, description, status))
 
     return formatted_date, work_details
 
-# Cross-reference with Excel
-def get_full_name(excel_path):
-    # Open Excel workbook and select sheet
-    wb = Excel.Book(excel_path)
-    sheet = wb.sheets[0]
+# Define function to write to Excel
+def write_to_excel(formatted_date, work_details, excel_path):
+    # Connect to the workbook
+    wb = xw.Book(excel_path)
+    sheet = wb.sheets['Automated']
 
-    # Get full name (column 1) and initials (column 4)
-    full_name = sheet.range('B1:B' + str(sheet.cells.last_cell.row)).value
-    initials = sheet.range('E1:E' + str(sheet.cells.last_cell.row)).value
+    # Find the last used row in the Excel sheet
+    last_row = sheet.range('A' + str(sheet.cells.last_cell.row)).end('up').row
+
+    # Start entering data from the next available row
+    for detail in work_details:
+        name, job_assigned_to, description, status = detail
+
+        # Split the description to extract 9-digit ID
+        work_order_id = None
+        for word in description.split():
+            if word.startswith("W23") and len(word) == 9:
+                work_order_id = word
+                break
+            if work_order_id:
+                description = description.replace(work_order_id, '').strip()
+
+        # Increment row
+        last_row += 1 
+
+        # Writing data to Excel
+        sheet.range(f"A{last_row}").value = formatted_date
+        sheet.range(f"B{last_row}").value = name
+        sheet.range(f"C{last_row}").value = work_order_id
+        sheet.range(f"D{last_row}").value = description
+        sheet.range(f"E{last_row}").value = status
     
-    # Create a disctionary to map initials to full names
-    initials_dictionary = {initial: name for initial, name in zip(initials, full_names)}
-
-    return initials_dictionary
-
-def name_to_code(work_details, sheet, crew):
-    # Dictionary 
+    # Save workbook after written data
+    wb.save()
 
 # Define function to fetch Maximo status using Selenium
-# Define function to write to Excel
+def extract_maximo_status(browser, excel_path):
+    # Connect to the workbook
+    wb = xw.Book(excel_path)
+    sheet = wb.sheets['Automated']
+
+    # Find the last used row in the Excel sheet
+    last_row = sheet.range('A' + str(sheet.cells.last_cell.row)).end('up').row
+    
+    # Navigate to Maximo login page
+    browser = webdriver.Edge()
+    actions = ActionChains(browser) 
+    wait = WebDriverWait(browser, 20)
+    browser.get('https://prod.manage.prod.iko.max-it-eam.com/maximo')   
+    browser.maximize_window()
+
+    # Enter login information
+    UserElem = wait.until(EC.element_to_be_clickable((By.ID, "username")))
+    UserElem.send_keys('NOZASEIY')
+    Cont1Elem = browser.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div[2]/form/div[3]/button")
+    Cont1Elem.click()
+    passElem = wait.until(EC.element_to_be_clickable((By.ID, "password")))
+    passElem.send_keys('Roofing1SN!') 
+    Cont2Elem = browser.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div[2]/form/div[3]/button")
+    Cont2Elem.click()
+
+    # Navigate to Work Order Tracking
+    iframe = wait.until(EC.presence_of_element_located((By.XPATH, "/html/body/div/div[7]/iframe")))
+    browser.switch_to.frame(iframe)
+    wotrackElem = wait.until(EC.element_to_be_clickable((By.ID, "FavoriteApp_WOTRACK")))
+    actions.move_to_element_with_offset(wotrackElem, 5, 5).click().perform()
+    
+    # Ensure History? section is NULL
+    history = wait.until(EC.element_to_be_clickable((By.ID, "m6a7dfd2f_tfrow_[C:20]_txt-tb")))
+    history.click()
+    history.send_keys(Keys.CONTROL + 'a', Keys.BACKSPACE)
+    
+    # Row 1 contains headers
+    for row_num in range(2, last_row + 1):  
+        # Work order is in column C
+        work_order_id = sheet.range(f'C{row_num}').value 
+
+        if work_order_id:
+            # Search for work order using Selenium
+            searchWO_number = wait.until(EC.element_to_be_clickable((By.ID, "m6a7dfd2f_tfrow_[C:1]_txt-tb")))
+            searchWO_number.send_keys(work_order_id)
+            searchWO_number.send_keys(Keys.ENTER)
+            
+            try:
+                status_element = wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="m6a7dfd2f_tdrow_[C:13]-c[R:0]"]/span')))
+                maximo_status = status_element.text
+                
+                # Write Maximo status to Excel
+                sheet.range(f'F{row_num}').value = maximo_status
+            
+            except Exception:
+                # If work order is not found in Maximo, status is "DNE"
+                sheet.range(f'F{row_num}').value = "DNE"
+
+        else:
+            # If work order ID is missing, status is "Not Sure"
+            sheet.range(f'F{row_num}').value = "Not Sure"
+    
+    # Save the Excel file
+    wb.save()
+
 # Main function or script execution
 # Close Selenium driver and save Excel file
