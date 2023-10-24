@@ -16,8 +16,21 @@ from docx import Document
 import datetime
 import xlwings as xw
 
+# Assumes maintenance log is in the same folder
+print("Make sure daily maintenance log is in the same project folder...\n")
+print("Excel file: Maintenance Daily Log Checker\n")
+print("Sheet: List of Records\n")
+word_name = input("Copy and paste the Word document name\n")
+word_file_path = word_name".doc"
+formatted_date, work_details = extract_data_from_doc(word_file_path)
+write_to_excel(formatted_date, work_details)
+browser = webdriver.Edge()
+extract_maximo_status(browser)
+browser.quit()
+print("Process complete...\n")
+
 # Extract the work details from the Word document
-def extract_data_from_docx(file_path):
+def extract_data_from_doc(file_path):
     # Load docx file
     docx = Document(file_path)
 
@@ -77,7 +90,7 @@ def extract_data_from_docx(file_path):
                             if possible_initials in crew_names and first_name in crew_names[possible_initials]:
                                 assigned_names.append(crew_names[possible_initials])
                                 break
-                # else look in Excel sheet 
+                    # else look in "laborAssignment.xls" under "List of Records" sheet in column "H", called "Initials" and check for initials (without the nickname) matching. List the options in the form of names if multiple appear and let user choose out of options.
 
                 name = "/".join(assigned_names)
             work_details.append((name, description, status))
@@ -85,7 +98,7 @@ def extract_data_from_docx(file_path):
     return formatted_date, work_details
 
 # Define function to write to Excel
-def write_to_excel(formatted_date, work_details, excel_path):
+def write_to_excel(formatted_date, work_details):
     # Connect to the workbook
     wb = xw.Book(excel_path)
     sheet = wb.sheets['Automated']
@@ -129,7 +142,6 @@ def extract_maximo_status(browser, excel_path):
     last_row = sheet.range('A' + str(sheet.cells.last_cell.row)).end('up').row
     
     # Navigate to Maximo login page
-    browser = webdriver.Edge()
     actions = ActionChains(browser) 
     wait = WebDriverWait(browser, 20)
     browser.get('https://prod.manage.prod.iko.max-it-eam.com/maximo')   
@@ -174,7 +186,7 @@ def extract_maximo_status(browser, excel_path):
                 # Write Maximo status to Excel
                 sheet.range(f'F{row_num}').value = maximo_status
             
-            except Exception:
+            except:
                 # If work order is not found in Maximo, status is "DNE"
                 sheet.range(f'F{row_num}').value = "DNE"
 
@@ -184,6 +196,3 @@ def extract_maximo_status(browser, excel_path):
     
     # Save the Excel file
     wb.save()
-
-# Main function or script execution
-# Close Selenium driver and save Excel file
