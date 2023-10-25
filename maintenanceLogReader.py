@@ -16,19 +16,6 @@ from docx import Document
 import datetime
 import xlwings as xw
 
-# Assumes maintenance log is in the same folder
-print("Make sure daily maintenance log is in the same project folder...\n")
-print("Excel file: Maintenance Daily Log Checker\n")
-print("Sheet: List of Records\n")
-word_name = input("Copy and paste the Word document name\n")
-word_file_path = word_name + ".docx"
-formatted_date, work_details = extract_data_from_doc(word_file_path)
-write_to_excel(formatted_date, work_details)
-browser = webdriver.Edge()
-extract_maximo_status(browser)
-browser.quit()
-print("Process complete...\n")
-
 # Extract the work details from the Word document
 def extract_data_from_doc(file_path):
     # Load docx file
@@ -75,22 +62,38 @@ def extract_data_from_doc(file_path):
             status = row.cells[2].text
 
             # Check if the initials match with crew names
-            if job_assigned_to == "Everyone":
+            if job_assigned_to.lower() in ["everyone", "all"]:
                 name = "Everyone"
             else:
                 assigned_names = []
+
                 # Split the initials by "/" and iterate through each one
                 for initial in job_assigned_to.split("/"):
                     if initial in crew_names:
                         assigned_names.append(crew_names[initial])
                     else:
+                        matched = False
                         # Check if name is one of the names with possible nickname
                         for first_name, new_initial in nickname_initial_mapping.items():
-                            possible_initials = new_initial + job_assigned_to[1]
-                            if possible_initials in crew_names and first_name in crew_names[possible_initials]:
+                            possible_initials = new_initial + initial[1]
+                            if possible_initials in crew_names:
                                 assigned_names.append(crew_names[possible_initials])
+                                matched = True
                                 break
-                    # else look in "laborAssignment.xlsx" under "List of Records" sheet in column "H", called "Initials" and check for initials (without the nickname) matching. List the options in the form of names if multiple appear and let user choose out of options.
+                        if not matched:
+                            excel_results = search_in_excel(initial)
+                            if excel_results:
+                                # If multiple matches, prompt user to choose
+                                if len(excel_results) > 1:
+                                    print(f"Multiple matches found for initials {initial}:")
+                                    for index, (name_option, _) in enumerate(excel_results):
+                                        print(f"{index + 1}. {name_option}")
+                                    choice = int(input("Choose the correct match (enter the number): ")) - 1
+                                    assigned_names.append(excel_results[choice][0])
+                                else:
+                                    assigned_names.append(excel_results[0][0])
+                            else:
+                                assigned_names.append("Name DNE")
 
                 name = "/".join(assigned_names)
             work_details.append((name, description, status))
@@ -107,16 +110,23 @@ def search_in_excel(initial):
     last_row = sheet.range('H' + str(sheet.cells.last_cell.row)).end('up').row
 
     # Execute all initials from column H, H1 is the subtitle
-    all_initials = sheet.range('H1:H' + str(last_row)).value
+    all_initials = sheet.range('H2:H' + str(last_row)).value
+
+    # Check for matches based on provided initials and potential nickname initials
+    potential_initials = [initial]
+    if initial[0] == 'B':
+        potential_initials.extend('W' + initial[1], 'R' + initial[1])
 
     # If initial is found, get corresponding name and position
-    matchin_rows = [index for index, value in enumerate(all_initials) if value == initial]
+    matching_rows = [index for index, value in enumerate(all_initials) if value in potential_initials]
 
     results = []
     for row in matching_rows:
-        name = sheet.range('B' + str(row + 1)).value
-        position = sheet.range('B' + str(row + 1)).value
-        position = sheet.range('B' + str(row + 1)).value
+        name = sheet.range('B' + str(row + 2)).value
+    
+    workbook.close()
+
+    return name
 
 # Define function to write to Excel
 def write_to_excel(formatted_date, work_details):
@@ -217,3 +227,16 @@ def extract_maximo_status(browser, excel_path):
     
     # Save the Excel file
     wb.save()
+
+# Assumes maintenance log is in the same folder
+print("Make sure daily maintenance log is in the same project folder...\n")
+print("Excel file: Maintenance Daily Log Checker\n")
+print("Sheet: List of Records\n")
+word_name = input("Copy and paste the Word document name\n")
+word_file_path = word_name + ".docx"
+formatted_date, work_details = extract_data_from_doc(word_file_path)
+write_to_excel(formatted_date, work_details)
+browser = webdriver.Edge()
+extract_maximo_status(browser)
+browser.quit()
+print("Process complete...\n")
