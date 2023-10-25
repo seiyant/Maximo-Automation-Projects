@@ -21,7 +21,7 @@ print("Make sure daily maintenance log is in the same project folder...\n")
 print("Excel file: Maintenance Daily Log Checker\n")
 print("Sheet: List of Records\n")
 word_name = input("Copy and paste the Word document name\n")
-word_file_path = word_name".doc"
+word_file_path = word_name + ".docx"
 formatted_date, work_details = extract_data_from_doc(word_file_path)
 write_to_excel(formatted_date, work_details)
 browser = webdriver.Edge()
@@ -90,18 +90,39 @@ def extract_data_from_doc(file_path):
                             if possible_initials in crew_names and first_name in crew_names[possible_initials]:
                                 assigned_names.append(crew_names[possible_initials])
                                 break
-                    # else look in "laborAssignment.xls" under "List of Records" sheet in column "H", called "Initials" and check for initials (without the nickname) matching. List the options in the form of names if multiple appear and let user choose out of options.
+                    # else look in "laborAssignment.xlsx" under "List of Records" sheet in column "H", called "Initials" and check for initials (without the nickname) matching. List the options in the form of names if multiple appear and let user choose out of options.
 
                 name = "/".join(assigned_names)
             work_details.append((name, description, status))
 
     return formatted_date, work_details
 
+# Function to extract data from laborAssignments as a fail case
+def search_in_excel(initial):
+    # Load Excel file
+    workbook = xw.Book('laborAssignment.xlsx')
+    sheet = workbook.sheets['List of Records']
+
+    # Find the last row with data in column H
+    last_row = sheet.range('H' + str(sheet.cells.last_cell.row)).end('up').row
+
+    # Execute all initials from column H, H1 is the subtitle
+    all_initials = sheet.range('H1:H' + str(last_row)).value
+
+    # If initial is found, get corresponding name and position
+    matchin_rows = [index for index, value in enumerate(all_initials) if value == initial]
+
+    results = []
+    for row in matching_rows:
+        name = sheet.range('B' + str(row + 1)).value
+        position = sheet.range('B' + str(row + 1)).value
+        position = sheet.range('B' + str(row + 1)).value
+
 # Define function to write to Excel
 def write_to_excel(formatted_date, work_details):
     # Connect to the workbook
-    wb = xw.Book(excel_path)
-    sheet = wb.sheets['Automated']
+    wb = xw.Book('Maintenance Daily Log Checker.xlsx')
+    sheet = wb.sheets['Automated'] # Change every Month maybe?
 
     # Find the last used row in the Excel sheet
     last_row = sheet.range('A' + str(sheet.cells.last_cell.row)).end('up').row
