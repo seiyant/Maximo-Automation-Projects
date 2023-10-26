@@ -13,6 +13,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from docx import Document
+import re
 import datetime
 import xlwings as xw
 
@@ -20,11 +21,11 @@ import xlwings as xw
 def extract_data_from_doc(file_path):
     # Load docx file
     docx = Document(file_path)
+    print("Loaded Word document...\n")
 
     # Extract the date and format it
     date_cell = docx.tables[0].cell(1, 1).text
-    date_object = datetime.datetime.strptime(date_cell, '%b %d, %Y')
-    formatted_date = date_object.strftime('%m/%d/%Y')  
+    print(f"Extracted Date: {date_cell}...\n")
 
     # Initialize an empty list to store the work details
     work_details = []
@@ -38,7 +39,7 @@ def extract_data_from_doc(file_path):
     }
     for row in docx.tables[0].rows:
         if row.cells[0].text == "Crew":
-            for crew_row in docx.tables[0].rows:
+            for crew_row in docx.tables[0].rows[8:23]:
                 name = crew_row.cells[0].text
                 position = crew_row.cells[1].text
                 attendance = crew_row.cells[3].text
@@ -98,10 +99,11 @@ def extract_data_from_doc(file_path):
                 name = "/".join(assigned_names)
             work_details.append((name, description, status))
 
-    return formatted_date, work_details
+    return date_cell, work_details
 
 # Function to extract data from laborAssignments as a fail case
 def search_in_excel(initial):
+    print(f"Searching in Excel for initial: {initial}...\n")
     # Load Excel file
     workbook = xw.Book('laborAssignment.xlsx')
     sheet = workbook.sheets['List of Records']
@@ -129,10 +131,11 @@ def search_in_excel(initial):
     return name
 
 # Define function to write to Excel
-def write_to_excel(formatted_date, work_details):
+def write_to_excel(date_cell, work_details):
+    print("Writing extracted data to Excel...\n")
     # Connect to the workbook
     wb = xw.Book('Maintenance Daily Log Checker.xlsx')
-    sheet = wb.sheets['Automated'] # Change every Month maybe?
+    sheet = wb.sheets['September 23'] # Change every Month
 
     # Find the last used row in the Excel sheet
     last_row = sheet.range('A' + str(sheet.cells.last_cell.row)).end('up').row
@@ -154,7 +157,7 @@ def write_to_excel(formatted_date, work_details):
         last_row += 1 
 
         # Writing data to Excel
-        sheet.range(f"A{last_row}").value = formatted_date
+        sheet.range(f"A{last_row}").value = date_cell
         sheet.range(f"B{last_row}").value = name
         sheet.range(f"C{last_row}").value = work_order_id
         sheet.range(f"D{last_row}").value = description
@@ -165,9 +168,10 @@ def write_to_excel(formatted_date, work_details):
 
 # Define function to fetch Maximo status using Selenium
 def extract_maximo_status(browser, excel_path):
+    print("Extracting Maximo status...\n")
     # Connect to the workbook
     wb = xw.Book(excel_path)
-    sheet = wb.sheets['Automated']
+    sheet = wb.sheets['September 23']
 
     # Find the last used row in the Excel sheet
     last_row = sheet.range('A' + str(sheet.cells.last_cell.row)).end('up').row
@@ -229,14 +233,17 @@ def extract_maximo_status(browser, excel_path):
     wb.save()
 
 # Assumes maintenance log is in the same folder
+print("Initializing...\n")
 print("Make sure daily maintenance log is in the same project folder...\n")
-print("Excel file: Maintenance Daily Log Checker\n")
-print("Sheet: List of Records\n")
-word_name = input("Copy and paste the Word document name\n")
-word_file_path = word_name + ".docx"
-formatted_date, work_details = extract_data_from_doc(word_file_path)
-write_to_excel(formatted_date, work_details)
+print("Excel file: Maintenance Daily Log Checker.xlsx...\n")
+print("Sheet in Excel file: List of Records...\n")
+word_name = input("Enter the date (MTH D, YEAR) of Word document:\n")
+word_file_path = word_name + " Maintenance Daily Log.docx"
+date_cell, work_details = extract_data_from_doc(word_file_path)
+print(f"Total work details extracted: {len(work_details)}\n")
+write_to_excel(date_cell, work_details)
 browser = webdriver.Edge()
-extract_maximo_status(browser)
+print("Web browser initiated...")
+extract_maximo_status(browser, 'Maintenance Daily Log Checker.xlsx')
 browser.quit()
 print("Process complete...\n")
