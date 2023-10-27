@@ -20,7 +20,7 @@ import xlwings as xw
 # Extract the work details from the Word document
 def extract_data_from_doc(file_path):
     # Load docx file
-    docx = Document(file_path)
+    doc = Document(file_path)
     print('Loaded Word document...\n')
     
     # Initialize an empty list to store the work details
@@ -176,7 +176,7 @@ def search_in_excel(initial):
     
     workbook.close()
 
-    if excel_results:
+    '''if excel_results:
                                 # If multiple matches, prompt user to choose
                                 if len(excel_results) > 1:
                                     print(f"Multiple matches found for initials {initial}:")
@@ -187,7 +187,7 @@ def search_in_excel(initial):
                                 else:
                                     assigned_names.append(excel_results[0][0])
                             else:
-                                assigned_names.append("Name DNE")
+                                assigned_names.append("Name DNE")'''
                                 
     return name
 
@@ -302,7 +302,7 @@ word_name = input("Enter the date (MTH D, YEAR) of Word document:\n")
 word_file_path = word_name + " Maintenance Daily Log.docx"
 date_cell, work_details = extract_data_from_doc(word_file_path)
 print(f"Total work details extracted: {len(work_details)}\n")
-write_to_excel(date_cell, work_details)
+write_to_excel(date_cell, work_details) # Load excel from here not inside
 browser = webdriver.Edge()
 print("Web browser initiated...\n")
 extract_maximo_status(browser, 'Maintenance Daily Log Checker.xlsx')
