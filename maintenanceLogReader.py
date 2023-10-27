@@ -21,85 +21,133 @@ import xlwings as xw
 def extract_data_from_doc(file_path):
     # Load docx file
     docx = Document(file_path)
-    print("Loaded Word document...\n")
-
-    # Extract the date and format it
-    date_cell = docx.tables[0].cell(1, 1).text
-    print(f"Extracted Date: {date_cell}...\n")
-
+    print('Loaded Word document...\n')
+    
     # Initialize an empty list to store the work details
     work_details = []
 
+    # Find cell locations
+    last_cell_text = None
+    row_index = 0
+    
+    for table in doc.tables:
+        for row in table.rows:
+            cell_index = 0
+            row_index += 1
+            for cell in row.cells:
+                if (cell.text == 'DATE') and (cell.text != last_cell_text):
+                    date_row = row_index
+                if (cell.text == 'ERT OR LEVEL 3 FIRST AID') and (cell.text != last_cell_text):
+                    crew_row = row_index
+                if (cell.text == 'STATUS') and (cell.text != last_cell_text):
+                    jobs_row = row_index
+                    jobs_cell = cell_index
+                cell_index += 1
+                last_cell_text = cell.text
+
+    # Extract the date and format it
+    found_date = False
+    
+    for row in doc.tables[0].rows[date_row:]:
+        for cell in row.cells:
+            if found_date:
+                date = cell.text
+                print(f'Extracted Date: {date}...\n')
+                found_date = False
+                break
+            if cell.text == 'DATE':
+                found_date = True
+        if date:
+            break
+    
     # Extract crew attendance details
+    print('Present crew:')
     crew_names = {}
-    nickname_initial_mapping = {
+    crew_positions = {}
+    cell_tracker = 0 # Keep track of index
+
+    for row in doc.tables[0].rows[crew_row:]:
+        for cell in row.cells:
+            if cell.text != last_cell_text:
+                if cell_tracker == 0:
+                    name = cell.text
+                elif cell_tracker == 1:
+                    position = cell.text
+                elif cell_tracker == 2:
+                    attendance = cell.text
+                elif cell_tracker == 3:
+                    certification = cell.text
+                    if attendance == 'P':
+                        first_name, last_name = name.split()
+                        real_initials = first_name[0] + last_name[0]
+                        crew_names[real_initials] = name
+                        crew_positions[real_initials] = position
+                        
+                    cell_tracker = -1 # Reset index
+                    
+                last_cell_text = cell.text
+                cell_tracker += 1
+                print(first_name, ' ', last_name, '\n')
+                
+            if cell.text == 'JOB ASSIGNED TO':
+                break
+
+    # Consider common letter swapping nicknames
+    nickname_initials = {
         'William': 'B',
         'Will': 'B',
         'Robert': 'B'
     }
-    for row in docx.tables[0].rows:
-        if row.cells[0].text == "Crew":
-            for crew_row in docx.tables[0].rows[8:23]:
-                name = crew_row.cells[0].text
-                position = crew_row.cells[1].text
-                attendance = crew_row.cells[3].text
-                if attendance != "A":
-                    first_name, last_name = name.split()
-                    initials = first_name[0] + last_name[0]
-                    crew_names[initials] = name
 
-    # Search for the row that contains "JOBS ASSIGNED TO" in column 0
-    start_row_index = None
-    for index, row in enumerate(docx.tables[0].rows):
-        if row.cells[0].text.lower() == "JOB ASSIGNED TO":
-            start_row_index = index
-            break
+    # Extracts work order details
+    cell_tracker = 0 # Keep track of index
+    empty_cell_1 = False
+    empty_cell_2 = False
     
-    # If "JOB ASSIGNED TO" is found, extract subsequent rows
-    if start_row_index is not None:
-        for row in docx.tables[0].rows[start_row_index + 1:]:
-            job_assigned_to = row.cells[0].text
-            description = row.cells[1].text
-            status = row.cells[2].text
-
-            # Check if the initials match with crew names
-            if job_assigned_to.lower() in ["everyone", "all"]:
-                name = "Everyone"
-            else:
-                assigned_names = []
-
-                # Split the initials by "/" and iterate through each one
-                for initial in job_assigned_to.split("/"):
-                    if initial in crew_names:
-                        assigned_names.append(crew_names[initial])
+    for row in doc.tables[0].rows[jobs_row:]:
+        for cell in row.cells:
+            if cell.text != last_cell_text:
+                if cell_tracker == 0:
+                    job_assigned_to = cell.text
+                elif cell_tracker == 1:
+                    description = cell.text
+                    if ''.join((cell.text).split()) == '':
+                        empty_cell_1 = True 
+                elif cell_tracker == 2:
+                    status = cell.text
+                    if ''.join((cell.text).split()) == '':
+                        empty_cell_2 = True
+                    if job_assigned_to.lower() in ['everyone', 'all', '']: # Special case
+                        name = 'Everyone' 
                     else:
-                        matched = False
-                        # Check if name is one of the names with possible nickname
-                        for first_name, new_initial in nickname_initial_mapping.items():
-                            possible_initials = new_initial + initial[1]
-                            if possible_initials in crew_names:
-                                assigned_names.append(crew_names[possible_initials])
-                                matched = True
-                                break
-                        if not matched:
-                            excel_results = search_in_excel(initial)
-                            if excel_results:
-                                # If multiple matches, prompt user to choose
-                                if len(excel_results) > 1:
-                                    print(f"Multiple matches found for initials {initial}:")
-                                    for index, (name_option, _) in enumerate(excel_results):
-                                        print(f"{index + 1}. {name_option}")
-                                    choice = int(input("Choose the correct match (enter the number): ")) - 1
-                                    assigned_names.append(excel_results[choice][0])
-                                else:
-                                    assigned_names.append(excel_results[0][0])
+                        assigned_names = []
+                        for initials in job_assigned_to.split('/'):
+                            if initials in crew_names: # Regular search
+                                assigned_names.append(crew_names[initials])
                             else:
-                                assigned_names.append("Name DNE")
-
-                name = "/".join(assigned_names)
-            work_details.append((name, description, status))
-
-    return date_cell, work_details
+                                matched_initials = False
+                                for first_nickname, nickname_initial in nickname_initials.items():
+                                    possible_initials = nickname_initial + initials[1]
+                                    if possible_initials in crew_names: # Search with letter swap
+                                        assigned_names.append(crew_names[possible_initials])
+                                        matched_initials = True
+                                        break
+                                if not matched_initials:
+                                    excel_initials = search_in_excel(initials) # Search in database
+                                    
+                        name = ', '.join(assigned_names)
+                        
+                    work_details.append((name, description, status))
+                    print('Crew: ', name, '\nDescription: ', description, '\nStatus: ', status)
+                    cell_tracker = -1 # Reset index
+                    
+                last_cell_text = cell.text
+                cell_tracker += 1
+                
+            if (empty_cell_1 == True) and (empty_cell_2 == True):
+                break
+            
+    return (date, work_details)
 
 # Function to extract data from laborAssignments as a fail case
 def search_in_excel(initial):
@@ -128,6 +176,19 @@ def search_in_excel(initial):
     
     workbook.close()
 
+    if excel_results:
+                                # If multiple matches, prompt user to choose
+                                if len(excel_results) > 1:
+                                    print(f"Multiple matches found for initials {initial}:")
+                                    for index, (name_option, _) in enumerate(excel_results):
+                                        print(f"{index + 1}. {name_option}")
+                                    choice = int(input("Choose the correct match (enter the number): ")) - 1
+                                    assigned_names.append(excel_results[choice][0])
+                                else:
+                                    assigned_names.append(excel_results[0][0])
+                            else:
+                                assigned_names.append("Name DNE")
+                                
     return name
 
 # Define function to write to Excel
@@ -243,7 +304,7 @@ date_cell, work_details = extract_data_from_doc(word_file_path)
 print(f"Total work details extracted: {len(work_details)}\n")
 write_to_excel(date_cell, work_details)
 browser = webdriver.Edge()
-print("Web browser initiated...")
+print("Web browser initiated...\n")
 extract_maximo_status(browser, 'Maintenance Daily Log Checker.xlsx')
 browser.quit()
 print("Process complete...\n")
