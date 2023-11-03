@@ -27,70 +27,73 @@ def extract_data_from_doc(file_path):
     work_details = []
 
     # Find cell locations
-    last_cell_text = None
     row_index = 0
-    
     for table in doc.tables:
-        for row in table.rows:
-            cell_index = 0
-            row_index += 1
-            for cell in row.cells:
-                if (cell.text == 'DATE') and (cell.text != last_cell_text):
-                    date_row = row_index
-                if (cell.text == 'ERT OR LEVEL 3 FIRST AID') and (cell.text != last_cell_text):
-                    crew_row = row_index
-                if (cell.text == 'STATUS') and (cell.text != last_cell_text):
-                    jobs_row = row_index
-                    jobs_cell = cell_index
-                cell_index += 1
-                last_cell_text = cell.text
+            for row in table.rows:
+                for cell in row.cells:
+                    if (''.join((cell.text).split()) == 'DATE') and (cell.text != last_cell_text):
+                        date_row = row_index # Date is in the same row
+                        print('Date:', date_row)
+                    if (''.join((cell.text).split()) == 'ERTORLEVEL3FIRSTAID') and (cell.text != last_cell_text):
+                        crew_row = row_index + 1
+                        print('Crew:', crew_row)
+                    if (''.join((cell.text).split()) == 'STATUS') and (cell.text != last_cell_text):
+                        jobs_row = row_index + 1
+                        print('Jobs:', jobs_row)
+                    last_cell_text = cell.text
+                row_index += 1
+    print('Date row index:', date_row)
+    print('Crew row index:', crew_row)
+    print('Jobs row index:', jobs_row, '\n')
 
     # Extract the date and format it
-    found_date = False
-    
-    for row in doc.tables[0].rows[date_row:]:
-        for cell in row.cells:
-            if found_date:
-                date = cell.text
-                print(f'Extracted Date: {date}...\n')
-                found_date = False
-                break
-            if cell.text == 'DATE':
-                found_date = True
-        if date:
+    for cell in doc.tables[0].rows[date_row].cells:
+        if (''.join((cell.text).split()) != 'DATE') and (cell.text != last_cell_text):
+            date = cell.text
             break
+        last_cell_text = cell.text
+    print('DATE: ', date, '\n')
     
     # Extract crew attendance details
-    print('Present crew:')
     crew_names = {}
     crew_positions = {}
     cell_tracker = 0 # Keep track of index
+    end_of_loop = False
+    
+    for cell in doc.tables[0].rows[crew_row - 1].cells:
+        if ''.join((cell.text).split()) == 'CREW':
+            crew_count = cell_tracker
+        elif ''.join((cell.text).split()) == 'POSITION':
+            position_count = cell_tracker
+        elif ''.join((cell.text).split()) == 'PRESENT(P)/ABSENT(A)':
+            attendance_count = cell_tracker
+        elif ''.join((cell.text).split()) == 'ERTORLEVEL3FIRSTAID':
+            certification_count = cell_tracker # Not really important
+        cell_tracker += 1
+    print('Crew cell size:', crew_count)
+    print('Position cell size:', position_count)
+    print('Attendance cell size:', attendance_count)
+    print('Certification cell size:', certification_count, '\n')
 
     for row in doc.tables[0].rows[crew_row:]:
+        if row.cells[attendance_count].text == 'P':
+            first_name, last_name = row.cells[crew_count].text.split()
+            position = row.cells[position_count].text
+            
+            real_initials = first_name[0] + last_name[0]
+            crew_names[real_initials] = row.cells[crew_count].text
+            crew_positions[real_initials] = position
+            
+            print(first_name, last_name, position)
+            
         for cell in row.cells:
-            if cell.text != last_cell_text:
-                if cell_tracker == 0:
-                    name = cell.text
-                elif cell_tracker == 1:
-                    position = cell.text
-                elif cell_tracker == 2:
-                    attendance = cell.text
-                elif cell_tracker == 3:
-                    certification = cell.text
-                    if attendance == 'P':
-                        first_name, last_name = name.split()
-                        real_initials = first_name[0] + last_name[0]
-                        crew_names[real_initials] = name
-                        crew_positions[real_initials] = position
-                        
-                    cell_tracker = -1 # Reset index
-                    
-                last_cell_text = cell.text
-                cell_tracker += 1
-                print(first_name, ' ', last_name, '\n')
-                
-            if cell.text == 'JOB ASSIGNED TO':
-                break
+            if ''.join((cell.text).split()) == 'JOBASSIGNEDTO':
+                end_of_loop = True
+                break  
+        if end_of_loop == True:
+            break
+        
+    print('\n')
 
     # Consider common letter swapping nicknames
     nickname_initials = {
