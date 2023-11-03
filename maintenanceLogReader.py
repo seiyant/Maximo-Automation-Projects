@@ -14,6 +14,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from docx import Document
 import re
+import time
 import datetime
 import xlwings as xw
 
@@ -42,9 +43,6 @@ def extract_data_from_doc(file_path):
                         print('Jobs:', jobs_row)
                     last_cell_text = cell.text
                 row_index += 1
-    print('Date row index:', date_row)
-    print('Crew row index:', crew_row)
-    print('Jobs row index:', jobs_row, '\n')
 
     # Extract the date and format it
     for cell in doc.tables[0].rows[date_row].cells:
@@ -57,19 +55,19 @@ def extract_data_from_doc(file_path):
     # Extract crew attendance details
     crew_names = {}
     crew_positions = {}
-    cell_tracker = 0 # Keep track of index
+    row_index = 0 # Keep track of index
     end_of_loop = False
     
     for cell in doc.tables[0].rows[crew_row - 1].cells:
         if ''.join((cell.text).split()) == 'CREW':
-            crew_count = cell_tracker
+            crew_count = row_index
         elif ''.join((cell.text).split()) == 'POSITION':
-            position_count = cell_tracker
+            position_count = row_index
         elif ''.join((cell.text).split()) == 'PRESENT(P)/ABSENT(A)':
-            attendance_count = cell_tracker
+            attendance_count = row_index
         elif ''.join((cell.text).split()) == 'ERTORLEVEL3FIRSTAID':
-            certification_count = cell_tracker # Not really important
-        cell_tracker += 1
+            certification_count = row_index # Not really important
+        row_index += 1
     print('Crew cell size:', crew_count)
     print('Position cell size:', position_count)
     print('Attendance cell size:', attendance_count)
@@ -97,64 +95,67 @@ def extract_data_from_doc(file_path):
 
     # Consider common letter swapping nicknames
     nickname_initials = {
-        'William': 'B',
-        'Will': 'B',
-        'Robert': 'B'
+        'Bill': 'William',
+        'Bob': 'Robert',
+        'Dick': 'Richard',
+        'Ted': 'Edward'
     }
 
     # Extracts work order details
-    cell_tracker = 0 # Keep track of index
-    empty_cell_1 = False
-    empty_cell_2 = False
+    row_index = 0
+    for cell in doc.tables[0].rows[jobs_row - 1].cells:
+        if ''.join((cell.text).split()) == 'JOBASSIGNEDTO':
+            assignment_count = row_index
+        elif ''.join((cell.text).split()) == 'DESCRIPTION':
+            description_count = row_index
+        elif ''.join((cell.text).split()) == 'STATUS':
+            status_count = row_index
+        row_index += 1
+    print('Assignment cell size:', assignment_count)
+    print('Description cell size:', description_count)
+    print('Status cell size:', status_count, '\n')
     
     for row in doc.tables[0].rows[jobs_row:]:
-        for cell in row.cells:
-            if cell.text != last_cell_text:
-                if cell_tracker == 0:
-                    job_assigned_to = cell.text
-                elif cell_tracker == 1:
-                    description = cell.text
-                    if ''.join((cell.text).split()) == '':
-                        empty_cell_1 = True 
-                elif cell_tracker == 2:
-                    status = cell.text
-                    if ''.join((cell.text).split()) == '':
-                        empty_cell_2 = True
-                    if job_assigned_to.lower() in ['everyone', 'all', '']: # Special case
-                        name = 'Everyone' 
-                    else:
-                        assigned_names = []
-                        for initials in job_assigned_to.split('/'):
-                            if initials in crew_names: # Regular search
-                                assigned_names.append(crew_names[initials])
-                            else:
-                                matched_initials = False
-                                for first_nickname, nickname_initial in nickname_initials.items():
-                                    possible_initials = nickname_initial + initials[1]
-                                    if possible_initials in crew_names: # Search with letter swap
-                                        assigned_names.append(crew_names[possible_initials])
-                                        matched_initials = True
-                                        break
-                                if not matched_initials:
-                                    excel_initials = search_in_excel(initials) # Search in database
-                                    
-                        name = ', '.join(assigned_names)
-                        
-                    work_details.append((name, description, status))
-                    print('Crew: ', name, '\nDescription: ', description, '\nStatus: ', status)
-                    cell_tracker = -1 # Reset index
-                    
-                last_cell_text = cell.text
-                cell_tracker += 1
-                
-            if (empty_cell_1 == True) and (empty_cell_2 == True):
-                break
-            
+        if row.cells[assignment_count].text.lower() in ['everyone', 'all']:
+            name = 'Everyone'
+        elif row.cells[assignment_count].text.lower() != '':
+            assigned_names = []
+            for initials in row.cells[assignment_count].text.split('/'):
+                if initials in crew_names:
+                    assigned_names.append(crew_names[initials])
+                    print('Match found:', crew_names[initials], initials)
+                else:
+                    initials_found = False
+                    for nickname, root_name in nickname_initials.items():
+                        possible_initials = root_name[0] + initials[1]
+                        print(f'Assumed nickname: {nickname}, swapping {initials} for {possible_initials}...')
+                        if possible_initials in crew_names:
+                            assigned_names.append(crew_names[possible_initials])
+                            initials_found = True
+                            print('Match found:', crew_names[possible_initials], initials)
+                            break
+                        else:
+                            print(f'Cannot find using {nickname}\n')
+                    if not initials_found:
+                        print(f'Searching Excel for initial: {initials}...\n')
+                        crew_names[initials] = search_in_excel(initials)
+                        assigned_names.append(crew_names[initials])
+                        print('Match found:', crew_names[initials], initials)
+
+            name = ', '.join(assigned_names)
+
+        description = row.cells[description_count].text
+        status = row.cells[status_count].text
+        if status not in ['DONE', 'IP']:
+            break
+        
+        work_details.append((name, description, status))
+        print(name, description, status, '\n')
+        
     return (date, work_details)
 
 # Function to extract data from laborAssignments as a fail case
 def search_in_excel(initial):
-    print(f"Searching in Excel for initial: {initial}...\n")
     # Load Excel file
     workbook = xw.Book('laborAssignment.xlsx')
     sheet = workbook.sheets['List of Records']
@@ -162,52 +163,54 @@ def search_in_excel(initial):
     # Find the last row with data in column H
     last_row = sheet.range('H' + str(sheet.cells.last_cell.row)).end('up').row
 
-    # Execute all initials from column H, H1 is the subtitle
-    all_initials = sheet.range('H2:H' + str(last_row)).value
+    matched_names = []
+    for i in range(1,last_row + 1):
+        names = sheet.range(f'B{i}').value
+        initials = sheet.range(f'H{i}').value
+        if initials == initial:
+            matched_names.append(names)
+            print(f"\nMatch found for {initials} in Excel: {names}")
 
-    # Check for matches based on provided initials and potential nickname initials
-    potential_initials = [initial]
-    if initial[0] == 'B':
-        potential_initials.extend('W' + initial[1], 'R' + initial[1])
-
-    # If initial is found, get corresponding name and position
-    matching_rows = [index for index, value in enumerate(all_initials) if value in potential_initials]
-
-    results = []
-    for row in matching_rows:
-        name = sheet.range('B' + str(row + 2)).value
-    
-    workbook.close()
-
-    '''if excel_results:
-                                # If multiple matches, prompt user to choose
-                                if len(excel_results) > 1:
-                                    print(f"Multiple matches found for initials {initial}:")
-                                    for index, (name_option, _) in enumerate(excel_results):
-                                        print(f"{index + 1}. {name_option}")
-                                    choice = int(input("Choose the correct match (enter the number): ")) - 1
-                                    assigned_names.append(excel_results[choice][0])
-                                else:
-                                    assigned_names.append(excel_results[0][0])
-                            else:
-                                assigned_names.append("Name DNE")'''
+    if len(matched_names) > 1:
+        print(f"\nMatches found for initials {initial}:")
+        for index, name_option in enumerate(matched_names):
+            print(f"{index + 1}. {name_option}")
+        choice = int(input("\nChoose the correct match (enter the number): ")) - 1
+        name = matched_names[choice]
+    elif len(matched_names) == 0:
+        print('\nMatch not found: DNE in Maximo')
+        name = 'DNE in Maximo'
+    else:
+        name = matched_names[0]
                                 
     return name
 
 # Define function to write to Excel
-def write_to_excel(date_cell, work_details):
+def write_to_excel(date, work_details):
     print("Writing extracted data to Excel...\n")
     # Connect to the workbook
     wb = xw.Book('Maintenance Daily Log Checker.xlsx')
+    '''# Extract month from date
+    date_string = ''.join((date).split())
+    month_index = ''
+    numbers = '0123456789'
+    for i in date_string:
+        if i in numbers:
+            break
+        else:
+            month_index += i
+    month = str(month_index)'''
+    
     sheet = wb.sheets['September 23'] # Change every Month
 
     # Find the last used row in the Excel sheet
     last_row = sheet.range('A' + str(sheet.cells.last_cell.row)).end('up').row
+    print(last_row) # how to find the last filled table row
 
     # Start entering data from the next available row
     for detail in work_details:
-        name, job_assigned_to, description, status = detail
-
+        name, description, status = detail
+        print(f'{name} worked on {description} and it is {status}')
         # Split the description to extract 9-digit ID
         work_order_id = None
         for word in description.split():
@@ -217,15 +220,15 @@ def write_to_excel(date_cell, work_details):
             if work_order_id:
                 description = description.replace(work_order_id, '').strip()
 
-        # Increment row
-        last_row += 1 
-
         # Writing data to Excel
-        sheet.range(f"A{last_row}").value = date_cell
+        sheet.range(f"A{last_row}").value = date
         sheet.range(f"B{last_row}").value = name
         sheet.range(f"C{last_row}").value = work_order_id
         sheet.range(f"D{last_row}").value = description
         sheet.range(f"E{last_row}").value = status
+
+        # Increment row
+        last_row += 1 
     
     # Save workbook after written data
     wb.save()
@@ -240,19 +243,28 @@ def extract_maximo_status(browser, excel_path):
     # Find the last used row in the Excel sheet
     last_row = sheet.range('A' + str(sheet.cells.last_cell.row)).end('up').row
     
-    # Navigate to Maximo login page
     actions = ActionChains(browser) 
     wait = WebDriverWait(browser, 20)
     browser.get('https://prod.manage.prod.iko.max-it-eam.com/maximo')   
     browser.maximize_window()
 
+    # Extract login information
+    credentials = {}
+    with open('config.txt', 'r') as file:
+        for line in file:
+            key, value = line.strip().split('=')
+            credentials[key] = value
+
     # Enter login information
     UserElem = wait.until(EC.element_to_be_clickable((By.ID, "username")))
-    UserElem.send_keys('NOZASEIY')
+    UserElem.send_keys(credentials['username'])
+
     Cont1Elem = browser.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div[2]/form/div[3]/button")
     Cont1Elem.click()
+
     passElem = wait.until(EC.element_to_be_clickable((By.ID, "password")))
-    passElem.send_keys('Roofing1SN!') 
+    passElem.send_keys(credentials['password'])
+
     Cont2Elem = browser.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div[2]/form/div[3]/button")
     Cont2Elem.click()
 
@@ -261,11 +273,13 @@ def extract_maximo_status(browser, excel_path):
     browser.switch_to.frame(iframe)
     wotrackElem = wait.until(EC.element_to_be_clickable((By.ID, "FavoriteApp_WOTRACK")))
     actions.move_to_element_with_offset(wotrackElem, 5, 5).click().perform()
-    
+        
     # Ensure History? section is NULL
     history = wait.until(EC.element_to_be_clickable((By.ID, "m6a7dfd2f_tfrow_[C:20]_txt-tb")))
-    history.click()
+    #history.click()
     history.send_keys(Keys.CONTROL + 'a', Keys.BACKSPACE)
+    history.send_keys('Y', Keys.ENTER)
+    print('History updated...')
     
     # Row 1 contains headers
     for row_num in range(2, last_row + 1):  
@@ -297,17 +311,12 @@ def extract_maximo_status(browser, excel_path):
     wb.save()
 
 # Assumes maintenance log is in the same folder
-print("Initializing...\n")
-print("Make sure daily maintenance log is in the same project folder...\n")
-print("Excel file: Maintenance Daily Log Checker.xlsx...\n")
-print("Sheet in Excel file: List of Records...\n")
-word_name = input("Enter the date (MTH D, YEAR) of Word document:\n")
-word_file_path = word_name + " Maintenance Daily Log.docx"
-date_cell, work_details = extract_data_from_doc(word_file_path)
+word_file_path = 'Sep 1, 2023 Maintenance Daily Log.docx'
+date, work_details = extract_data_from_doc(word_file_path)
 print(f"Total work details extracted: {len(work_details)}\n")
-write_to_excel(date_cell, work_details) # Load excel from here not inside
-browser = webdriver.Edge()
+write_to_excel(date, work_details) # Load excel from here not inside
+'''browser = webdriver.Edge()
 print("Web browser initiated...\n")
 extract_maximo_status(browser, 'Maintenance Daily Log Checker.xlsx')
-browser.quit()
+browser.quit()'''
 print("Process complete...\n")
