@@ -109,16 +109,22 @@ browser.get('https://prod.manage.prod.iko.max-it-eam.com/maximo')
 # Maximize window
 browser.maximize_window()
 
+# Extract login information
+credentials = {}
+with open('config.txt', 'r') as file:
+    for line in file:
+        key, value = line.strip().split('=')
+        credentials[key] = value
+
 # Enter login information
-# Improvement: store username and password in a separate file
 UserElem = wait.until(EC.element_to_be_clickable((By.ID, "username")))
-UserElem.send_keys('NOZASEIY')
+UserElem.send_keys(credentials['username'])
 
 Cont1Elem = browser.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div[2]/form/div[3]/button")
 Cont1Elem.click()
 
 passElem = wait.until(EC.element_to_be_clickable((By.ID, "password")))
-passElem.send_keys('Roofing1SN!') 
+passElem.send_keys(credentials['password'])
 
 Cont2Elem = browser.find_element(By.XPATH, "/html/body/div/div/div[2]/div[2]/div[2]/form/div[3]/button")
 Cont2Elem.click()
