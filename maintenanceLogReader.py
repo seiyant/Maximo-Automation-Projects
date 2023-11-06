@@ -32,13 +32,13 @@ def extract_data_from_doc(file_path):
     for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
-                    if (''.join((cell.text).split()) == 'DATE') and (cell.text != last_cell_text):
+                    if (''.join((cell.text).split()).lower() == 'date') and (cell.text != last_cell_text):
                         date_row = row_index # Date is in the same row
                         print('Date:', date_row)
-                    if (''.join((cell.text).split()) == 'ERTORLEVEL3FIRSTAID') and (cell.text != last_cell_text):
+                    if (''.join((cell.text).split()).lower() == 'ertorlevel3firstaid') and (cell.text != last_cell_text):
                         crew_row = row_index + 1
                         print('Crew:', crew_row)
-                    if (''.join((cell.text).split()) == 'STATUS') and (cell.text != last_cell_text):
+                    if (''.join((cell.text).split()).lower() == 'status') and (cell.text != last_cell_text):
                         jobs_row = row_index + 1
                         print('Jobs:', jobs_row)
                     last_cell_text = cell.text
@@ -46,7 +46,7 @@ def extract_data_from_doc(file_path):
 
     # Extract the date and format it
     for cell in doc.tables[0].rows[date_row].cells:
-        if (''.join((cell.text).split()) != 'DATE') and (cell.text != last_cell_text):
+        if (''.join((cell.text).split()).lower() != 'date') and (cell.text != last_cell_text):
             date = cell.text
             break
         last_cell_text = cell.text
@@ -59,13 +59,13 @@ def extract_data_from_doc(file_path):
     end_of_loop = False
     
     for cell in doc.tables[0].rows[crew_row - 1].cells:
-        if ''.join((cell.text).split()) == 'CREW':
+        if ''.join((cell.text).split()).lower() == 'crew':
             crew_count = row_index
-        elif ''.join((cell.text).split()) == 'POSITION':
+        elif ''.join((cell.text).split()).lower() == 'position':
             position_count = row_index
-        elif ''.join((cell.text).split()) == 'PRESENT(P)/ABSENT(A)':
+        elif ''.join((cell.text).split()).lower() == 'present(p)/absent(a)':
             attendance_count = row_index
-        elif ''.join((cell.text).split()) == 'ERTORLEVEL3FIRSTAID':
+        elif ''.join((cell.text).split()).lower() == 'ertorlevel3firstaid':
             certification_count = row_index # Not really important
         row_index += 1
     print('Crew cell size:', crew_count)
@@ -85,7 +85,7 @@ def extract_data_from_doc(file_path):
             print(first_name, last_name, position)
             
         for cell in row.cells:
-            if ''.join((cell.text).split()) == 'JOBASSIGNEDTO':
+            if ''.join((cell.text).split()).lower() == 'jobassignedto':
                 end_of_loop = True
                 break  
         if end_of_loop == True:
@@ -104,11 +104,11 @@ def extract_data_from_doc(file_path):
     # Extracts work order details
     row_index = 0
     for cell in doc.tables[0].rows[jobs_row - 1].cells:
-        if ''.join((cell.text).split()) == 'JOBASSIGNEDTO':
+        if ''.join((cell.text).split()).lower() == 'jobassignedto':
             assignment_count = row_index
-        elif ''.join((cell.text).split()) == 'DESCRIPTION':
+        elif ''.join((cell.text).split()).lower() == 'description':
             description_count = row_index
-        elif ''.join((cell.text).split()) == 'STATUS':
+        elif ''.join((cell.text).split()).lower() == 'status':
             status_count = row_index
         row_index += 1
     print('Assignment cell size:', assignment_count)
@@ -190,16 +190,6 @@ def write_to_excel(date, work_details):
     print("Writing extracted data to Excel...\n")
     # Connect to the workbook
     wb = xw.Book('Maintenance Daily Log Checker.xlsx')
-    '''# Extract month from date
-    date_string = ''.join((date).split())
-    month_index = ''
-    numbers = '0123456789'
-    for i in date_string:
-        if i in numbers:
-            break
-        else:
-            month_index += i
-    month = str(month_index)'''
     
     sheet = wb.sheets['September 23'] # Change every Month
 
@@ -279,6 +269,7 @@ def extract_maximo_status(browser, excel_path):
     #history.click()
     history.send_keys(Keys.CONTROL + 'a', Keys.BACKSPACE)
     history.send_keys('Y', Keys.ENTER)
+    time.sleep(5)
     print('History updated...')
     
     # Row 1 contains headers
@@ -289,12 +280,15 @@ def extract_maximo_status(browser, excel_path):
         if work_order_id:
             # Search for work order using Selenium
             searchWO_number = wait.until(EC.element_to_be_clickable((By.ID, "m6a7dfd2f_tfrow_[C:1]_txt-tb")))
+            searchWO_number.send_keys(Keys.CONTROL + 'a', Keys.BACKSPACE)
             searchWO_number.send_keys(work_order_id)
             searchWO_number.send_keys(Keys.ENTER)
+            time.sleep(5)
             
             try:
-                status_element = wait.until(EC.presence_of_element_located((By.XPATH, '//*[@id="m6a7dfd2f_tdrow_[C:13]-c[R:0]"]/span')))
-                maximo_status = status_element.text
+                status = wait.until(EC.element_to_be_clickable((By.ID, "m6a7dfd2f_tdrow_[C:13]-c[R:0]")))
+                maximo_status = status.text
+                print(maximo_status)
                 
                 # Write Maximo status to Excel
                 sheet.range(f'F{row_num}').value = maximo_status
@@ -302,21 +296,23 @@ def extract_maximo_status(browser, excel_path):
             except:
                 # If work order is not found in Maximo, status is "DNE"
                 sheet.range(f'F{row_num}').value = "DNE"
+                print('DNE')
 
         else:
             # If work order ID is missing, status is "Not Sure"
             sheet.range(f'F{row_num}').value = "Not Sure"
+            print('NOT SURE')
     
     # Save the Excel file
     wb.save()
 
 # Assumes maintenance log is in the same folder
-word_file_path = 'Sep 1, 2023 Maintenance Daily Log.docx'
+word_file_path = 'Sep 29, 2023 Maintenance Daily Log.docx'
 date, work_details = extract_data_from_doc(word_file_path)
 print(f"Total work details extracted: {len(work_details)}\n")
 write_to_excel(date, work_details) # Load excel from here not inside
-'''browser = webdriver.Edge()
+browser = webdriver.Edge()
 print("Web browser initiated...\n")
 extract_maximo_status(browser, 'Maintenance Daily Log Checker.xlsx')
-browser.quit()'''
+browser.quit()
 print("Process complete...\n")
