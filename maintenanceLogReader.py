@@ -18,6 +18,21 @@ import time
 import datetime
 import xlwings as xw
 
+# Main function 
+def main():
+    # Assumes maintenance log is in the same folder
+    word_file_path = 'Nov 25, 2023 Maintenance Daily Log.docx'
+    date, work_details = extract_data_from_doc(word_file_path)
+    print(f"Total work details extracted: {len(work_details)}\n")
+    excel_file_path = 'Maintenance Daily Log Checker.xlsx'
+    excel_file_sheet = 'November 23'
+    write_to_excel(date, work_details, excel_file_path, excel_file_sheet) # Load excel from here not inside
+    browser = webdriver.Edge()
+    print("Web browser initiated...\n")
+    extract_maximo_status(browser, excel_file_path, excel_file_sheet)
+    browser.quit()
+    print("Process complete...\n")
+
 # Extract the work details from the Word document
 def extract_data_from_doc(file_path):
     # Load docx file
@@ -186,12 +201,12 @@ def search_in_excel(initial):
     return name
 
 # Define function to write to Excel
-def write_to_excel(date, work_details):
+def write_to_excel(date, work_details, excel_file_path, excel_file_sheet):
     print("Writing extracted data to Excel...\n")
     # Connect to the workbook
-    wb = xw.Book('Maintenance Daily Log Checker.xlsx')
+    wb = xw.Book(excel_file_path)
     
-    sheet = wb.sheets['September 23'] # Change every Month
+    sheet = wb.sheets[excel_file_sheet] 
 
     # Find the last used row in the Excel sheet
     last_row = sheet.range('A' + str(sheet.cells.last_cell.row)).end('up').row
@@ -224,11 +239,11 @@ def write_to_excel(date, work_details):
     wb.save()
 
 # Define function to fetch Maximo status using Selenium
-def extract_maximo_status(browser, excel_path):
+def extract_maximo_status(browser, excel_file_path, excel_file_sheet):
     print("Extracting Maximo status...\n")
     # Connect to the workbook
-    wb = xw.Book(excel_path)
-    sheet = wb.sheets['September 23']
+    wb = xw.Book(excel_file_path)
+    sheet = wb.sheets[excel_file_sheet]
 
     # Find the last used row in the Excel sheet
     last_row = sheet.range('A' + str(sheet.cells.last_cell.row)).end('up').row
@@ -274,45 +289,37 @@ def extract_maximo_status(browser, excel_path):
     
     # Row 1 contains headers
     for row_num in range(2, last_row + 1):  
-        # Work order is in column C
-        work_order_id = sheet.range(f'C{row_num}').value 
+        if sheet.range(f'F{row_num}').value != 'CLOSE':
+            # Work order is in column C
+            work_order_id = sheet.range(f'C{row_num}').value
 
-        if work_order_id:
-            # Search for work order using Selenium
-            searchWO_number = wait.until(EC.element_to_be_clickable((By.ID, "m6a7dfd2f_tfrow_[C:1]_txt-tb")))
-            searchWO_number.send_keys(Keys.CONTROL + 'a', Keys.BACKSPACE)
-            searchWO_number.send_keys(work_order_id)
-            searchWO_number.send_keys(Keys.ENTER)
-            time.sleep(5)
-            
-            try:
-                status = wait.until(EC.element_to_be_clickable((By.ID, "m6a7dfd2f_tdrow_[C:13]-c[R:0]")))
-                maximo_status = status.text
-                print(maximo_status)
+            if work_order_id:
+                # Search for work order using Selenium
+                searchWO_number = wait.until(EC.element_to_be_clickable((By.ID, "m6a7dfd2f_tfrow_[C:1]_txt-tb")))
+                searchWO_number.send_keys(Keys.CONTROL + 'a', Keys.BACKSPACE)
+                searchWO_number.send_keys(work_order_id)
+                searchWO_number.send_keys(Keys.ENTER)
+                time.sleep(5)
                 
-                # Write Maximo status to Excel
-                sheet.range(f'F{row_num}').value = maximo_status
-            
-            except:
-                # If work order is not found in Maximo, status is "DNE"
-                sheet.range(f'F{row_num}').value = "DNE"
-                print('DNE')
+                try:
+                    status = wait.until(EC.element_to_be_clickable((By.ID, "m6a7dfd2f_tdrow_[C:13]-c[R:0]")))
+                    maximo_status = status.text
+                    print(work_order_id, maximo_status)
+                    
+                    # Write Maximo status to Excel
+                    sheet.range(f'F{row_num}').value = maximo_status
+                
+                except:
+                    # If work order is not found in Maximo, status is "DNE"
+                    sheet.range(f'F{row_num}').value = "DNE"
+                    print(work_order_id, 'DNE')
 
-        else:
-            # If work order ID is missing, status is "Not Sure"
-            sheet.range(f'F{row_num}').value = "Not Sure"
-            print('NOT SURE')
-    
+            else:
+                # If work order ID is missing, status is "Not Sure"
+                sheet.range(f'F{row_num}').value = "NOT SURE"
+                print(work_order_id, 'NOT SURE')
+        
     # Save the Excel file
     wb.save()
 
-# Assumes maintenance log is in the same folder
-word_file_path = 'Sep 29, 2023 Maintenance Daily Log.docx'
-date, work_details = extract_data_from_doc(word_file_path)
-print(f"Total work details extracted: {len(work_details)}\n")
-write_to_excel(date, work_details) # Load excel from here not inside
-browser = webdriver.Edge()
-print("Web browser initiated...\n")
-extract_maximo_status(browser, 'Maintenance Daily Log Checker.xlsx')
-browser.quit()
-print("Process complete...\n")
+main()
