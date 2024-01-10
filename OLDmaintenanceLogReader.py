@@ -32,7 +32,7 @@ def main():
     extract_maximo_status(browser, excel_file_path, excel_file_sheet)
     browser.quit()
     print("Process complete...\n")
-
+    
 # Extract the work details from the Word document
 def extract_data_from_doc(file_path):
     # Load docx file
