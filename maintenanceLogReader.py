@@ -22,13 +22,13 @@ import xlwings as xw
 def main():
     # Copy maintenance log of the day to the same folder and change file path to correct name
     # Copy and paste the file name, sometimes there are extra spaces
-    file_path = 'Jan 19, 2024 Maintenance Daily Log.xlsm'
+    file_path = 'test log.xlsm'
     sheet = 'Sheet1'
 
     # Location of the daily maintenance log checker
     excel_file_path = 'P:\All\Engineering\Seiya Nozawa-Temchenko\Maximo Automation\Maximo-Automation-Projects\Maintenance Daily Log Checker.xlsx'
     # Make a new sheet each month
-    excel_file_sheet = 'January 24'
+    excel_file_sheet = 'December 23' # change month
     extract_and_write_excel(file_path, sheet, excel_file_path, excel_file_sheet)
     browser = webdriver.Edge()
     
