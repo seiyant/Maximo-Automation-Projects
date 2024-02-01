@@ -34,6 +34,9 @@ def main():
     
     browser.quit()
 
+def magic_number():
+    time.sleep(2)
+
 def date_ranger():
     # Today's date
     todate = datetime.datetime.now() 
@@ -136,33 +139,79 @@ def maximo_navigation(browser, start_date, end_date):
     findbutton.click() 
     
     # Find number of Work Orders
-    time.sleep(2) # Magic number
+    magic_number()
     wostring = wait.until(EC.element_to_be_clickable((By.ID, 'm6a7dfd2f-lb3')))
     match = re.search(r'\((\d+) - (\d+) of (\d+)\)', wostring.text)
 
     if match:
         i = int(match.group(1))
-        max = int(match.group(3))
+        maxi = int(match.group(3))
     else:
         i = 0
-        max = 0
+        maxi = 0
         print("No results in this time frame. If issue persists change the sleep length")
 
-    print(f'Total Work Orders: {max}')
-    return i, max
+    print(f'Total Work Orders: {maxi}')
+    return i, maxi
 
 def extraction_excel(browser, index, total):
     wait = WebDriverWait(browser, 20)
 
-    # Cycle through each line and page 
-    while i <= max:
+    # Cycle through each line and page (index begins at 1)
+    while index <= 1:#total:
+        print(f'Parsing Work Order {index} of {total}')
+
+        # Navigate to Work Order
+        wo_html = f'm6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:{index - 1}]'
+        findwo = wait.until(EC.element_to_be_clickable((By.ID, wo_html)))
+        findwo.click()
+
+        # Navigate in Work Order
+        magic_number()
+        work_order = wait.until(EC.element_to_be_clickable((By.ID, 'm52945e17-tb'))).get_attribute('value')
+        print(f'Work Order: {work_order}')
+        description = wait.until(EC.element_to_be_clickable((By.ID, 'md42b94ac-tb'))).get_attribute('value')
+        print(f'Description: {description}')
+        location = wait.until(EC.element_to_be_clickable((By.ID, 'm7b0033b9-tb2'))).get_attribute('value')
+        print(f'Location: {location}')
+        equipment = wait.until(EC.element_to_be_clickable((By.ID, 'me6ba331d-tb'))).get_attribute('value')
+        print(f'Equipment: {equipment}')
+        work_type = wait.until(EC.element_to_be_clickable((By.ID, 'me2096203-tb'))).get_attribute('value')
+        print(f'Work Type: {work_type}')
+        job_plan = wait.until(EC.element_to_be_clickable((By.ID, 'mfe7bb84-tb'))).get_attribute('value')
+        print(f'Job Plan: {job_plan}')
+        plan_hours = wait.until(EC.element_to_be_clickable((By.ID, 'm8c7fa385-tb'))).get_attribute('value') 
+        print(f'Planned Hours: {plan_hours}')
+        
+        # Navigate to Actuals
+        actuals = wait.until(EC.element_to_be_clickable((By.ID, 'm272f5640-tab_anchor')))
+        actuals.click()
+
+        # There may be multiple laborers
+        magic_number()
+        labstring = wait.until(EC.element_to_be_clickable((By.ID, 'm4dfd8aef-lb3')))
+        match = re.search(r'\((\d+) - (\d+) of (\d+)\)', labstring.text)
+        labor_max = int(match.group(3))
+        j, laborer, real_hours, rate = 0, [], [], []
+
+        while j < labor_max:
+            labor_html = f'm4dfd8aef_tdrow_[C:2]_txt-tb[R:{j}]'
+            hours_html = f'm4dfd8aef_tdrow_[C:9]_txt-tb[R:{j}]'
+            rate_html = f'm4dfd8aef_tdrow_[C:10]_txt-tb[R:{j}]'
+
+            if (wait.until(EC.element_to_be_clickable((By.ID, hours_html))).get_attribute('value') != '0:00'):
+                laborer[j] = wait.until(EC.element_to_be_clickable((By.ID, labor_html))).get_attribute('value')
+                real_hours[j] = wait.until(EC.element_to_be_clickable((By.ID, hours_html))).get_attribute('value')
+                rate[j] = wait.until(EC.element_to_be_clickable((By.ID, rate_html))).get_attribute('value')
+            j += 1
+        
         # line  1: m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:0]
         # line  2: m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:1]
         # line 20: m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:19]
 
         # line  1: m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:20]
         # line 20: m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:39]
-    category, craft, process cond, desc, job plan #, planned hrs, new plan?, actusal hours, laborers
+    #category, craft, process cond, desc, job plan #, planned hrs, new plan?, actusal hours, laborers
     
 
 main()
