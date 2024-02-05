@@ -22,13 +22,13 @@ import xlwings as xw
 def main():
     # Copy maintenance log of the day to the same folder and change file path to correct name
     # Copy and paste the file name, sometimes there are extra spaces
-    file_path = 'test log.xlsm'
+    file_path = 'Feb 3, 2024 Maintenance Daily Log.xlsm'
     sheet = 'Sheet1'
 
     # Location of the daily maintenance log checker
     excel_file_path = 'P:\All\Engineering\Seiya Nozawa-Temchenko\Maximo Automation\Maximo-Automation-Projects\Maintenance Daily Log Checker.xlsx'
     # Make a new sheet each month
-    excel_file_sheet = 'December 23' # change month
+    excel_file_sheet = 'February 24' # change month
     extract_and_write_excel(file_path, sheet, excel_file_path, excel_file_sheet)
     browser = webdriver.Edge()
     
@@ -48,7 +48,7 @@ def extract_and_write_excel(file_path, sheet, excel_file_path, excel_file_sheet)
     print('Date: ', date)
     
     for rows in range(2, last_row+1):
-        if sheet.range(f'A{rows}').value == 'WORK DONE':
+        if (sheet.range(f'A{rows}').value == 'WORK DONE') or (sheet.range(f'A{rows}').value == 'WORK STATUS'):
             work_done_index = rows;
             print("Index:", work_done_index)
             break
@@ -98,7 +98,7 @@ def extract_maximo_status(browser, excel_file_path, excel_file_sheet):
     last_row = sheet.range('A' + str(sheet.cells.last_cell.row)).end('up').row
     
     actions = ActionChains(browser) 
-    wait = WebDriverWait(browser, 20)
+    wait = WebDriverWait(browser, 10)
     browser.get('https://prod.manage.prod.iko.max-it-eam.com/maximo')   
     browser.maximize_window()
 

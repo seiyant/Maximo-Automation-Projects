@@ -18,7 +18,7 @@ import xlwings as xw
 browser = webdriver.Edge() 
 
 wb = xw.Book(r'\\igashfs1\shared\All\SERVER REPORTS\2 Week Plan.xlsx') #excel workbook to be used
-sheet = xw.sheets[0] #first sheet
+sheet = xw.sheets[1] #increase sheet number biweekly, or hardcode name
 
 #Changing what this script clicks on requires your browser dev tools
 #Each object has an ID, inspect element to hover over object, click to find ID
@@ -109,7 +109,7 @@ time.sleep(2)
 
 findElem = browser.find_element(By.ID, "m4fd840b0-pb") #find button
 findElem.click()
-time.sleep(10)
+time.sleep(4)
 numberofWOs = browser.find_element(By.ID, "m6a7dfd2f-lb3") #text that says number of WOs
 numberofWOs = numberofWOs.text #saves text in variable
 print(numberofWOs)
@@ -143,7 +143,7 @@ while i<numberofWOs:
     time.sleep(3)
     type(PlansElem)
     PlansElem.click()#click plans tab
-    time.sleep(10) 
+    time.sleep(5) 
     try:
         plannedhrs1 = browser.find_element(By.XPATH, "/html/body/form/div/table[2]/tbody/tr/td/table/tbody/tr/td/table/tbody/tr/td/table/tbody/tr[2]/td/div/table/tbody/tr/td/div/table/tbody/tr/td/table/tbody/tr/td[2]/div/div[1]/div/table/tbody/tr/td/table/tbody/tr[2]/td/table/tbody/tr[4]/td/table/tbody/tr[2]/td/table/tbody/tr/td/div/table/tbody/tr[3]/td/table/tbody/tr[2]/td/table/tbody/tr[4]/td[11]/input").get_attribute("value");
     except:
@@ -245,7 +245,7 @@ while i<numberofWOs:
         nextElem.click() #if that didnt work try again
     wotabElem = browser.find_element(By.ID, "mbf28cd64-tab_anchor") #work order tab button
     type(wotabElem)
-    time.sleep(15)
+    time.sleep(5)
     wotabElem.click() #click the work order tab
     time.sleep(5)
     print(WO + ' complete \n') #progress notification

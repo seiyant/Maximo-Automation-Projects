@@ -34,9 +34,6 @@ def main():
     
     browser.quit()
 
-def magic_number():
-    time.sleep(2)
-
 def date_ranger():
     # Today's date
     todate = datetime.datetime.now() 
@@ -139,7 +136,7 @@ def maximo_navigation(browser, start_date, end_date):
     findbutton.click() 
     
     # Find number of Work Orders
-    magic_number()
+    time.sleep(2)
     wostring = wait.until(EC.element_to_be_clickable((By.ID, 'm6a7dfd2f-lb3')))
     match = re.search(r'\((\d+) - (\d+) of (\d+)\)', wostring.text)
 
@@ -167,7 +164,7 @@ def extraction_excel(browser, index, total):
         findwo.click()
 
         # Navigate in Work Order
-        magic_number()
+        time.sleep(2)
         work_order = wait.until(EC.element_to_be_clickable((By.ID, 'm52945e17-tb'))).get_attribute('value')
         print(f'Work Order: {work_order}')
         description = wait.until(EC.element_to_be_clickable((By.ID, 'md42b94ac-tb'))).get_attribute('value')
@@ -188,21 +185,31 @@ def extraction_excel(browser, index, total):
         actuals.click()
 
         # There may be multiple laborers
-        magic_number()
+        time.sleep(5)
         labstring = wait.until(EC.element_to_be_clickable((By.ID, 'm4dfd8aef-lb3')))
         match = re.search(r'\((\d+) - (\d+) of (\d+)\)', labstring.text)
         labor_max = int(match.group(3))
-        j, laborer, real_hours, rate = 0, [], [], []
+        j = 0
+        laborer = [None] * labor_max
+        real_hours = [None] * labor_max
+        rate = [None] * labor_max
 
         while j < labor_max:
-            labor_html = f'm4dfd8aef_tdrow_[C:2]_txt-tb[R:{j}]'
+            print(f'Index {j} of {labor_max}')
+            labor_html = f'm4dfd8aef_tdrow_[C:3]_txt-tb[R:{j}]'
             hours_html = f'm4dfd8aef_tdrow_[C:9]_txt-tb[R:{j}]'
             rate_html = f'm4dfd8aef_tdrow_[C:10]_txt-tb[R:{j}]'
+            print(labor_html)
+            print(hours_html)
+            print(rate_html)
 
-            if (wait.until(EC.element_to_be_clickable((By.ID, hours_html))).get_attribute('value') != '0:00'):
-                laborer[j] = wait.until(EC.element_to_be_clickable((By.ID, labor_html))).get_attribute('value')
-                real_hours[j] = wait.until(EC.element_to_be_clickable((By.ID, hours_html))).get_attribute('value')
-                rate[j] = wait.until(EC.element_to_be_clickable((By.ID, rate_html))).get_attribute('value')
+            #if (wait.until(EC.element_to_be_clickable((By.ID, hours_html))).get_attribute('value') != '0:00'):
+            laborer[j] = wait.until(EC.element_to_be_clickable((By.ID, labor_html))).get_attribute('value')
+            print(laborer[j])
+            real_hours[j] = wait.until(EC.element_to_be_clickable((By.ID, hours_html))).get_attribute('value')
+            print(real_hours[j])
+            rate[j] = wait.until(EC.element_to_be_clickable((By.ID, rate_html))).get_attribute('value')
+            print(rate[j])
             j += 1
         
         # line  1: m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:0]
