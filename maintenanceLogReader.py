@@ -20,13 +20,12 @@ import xlwings as xw
 
 # Main function 
 def main():
-    # Copy maintenance log of the day to the same folder and change file path to correct name
-    # Copy and paste the file name, sometimes there are extra spaces
-    file_path = 'Feb 3, 2024 Maintenance Daily Log.xlsm'
+    # Change date, usually Wed, Thu, Sat
+    file_path = 'P:\All\Maintenance\Daily Maintenance Logs\Z Test Log.xlsm'
     sheet = 'Sheet1'
 
     # Location of the daily maintenance log checker
-    excel_file_path = 'P:\All\Engineering\Seiya Nozawa-Temchenko\Maximo Automation\Maximo-Automation-Projects\Maintenance Daily Log Checker.xlsx'
+    excel_file_path = 'P:\All\Engineering\Projects\Python Scripts\Seiya SEP 2023-APR 2024\Maximo-Automation-Projects\Maintenance Daily Log Checker.xlsx'
     # Make a new sheet each month
     excel_file_sheet = 'February 24' # change month
     extract_and_write_excel(file_path, sheet, excel_file_path, excel_file_sheet)
@@ -44,7 +43,7 @@ def extract_and_write_excel(file_path, sheet, excel_file_path, excel_file_sheet)
     last_row = sheet.range('A' + str(sheet.cells.last_cell.row)).end('up').row
     print('Last row index: ', last_row)
 
-    date = sheet.range(f'B{2}').value
+    date = sheet.range(f'B{3}').value
     print('Date: ', date)
     
     for rows in range(2, last_row+1):
@@ -123,6 +122,7 @@ def extract_maximo_status(browser, excel_file_path, excel_file_sheet):
     Cont2Elem.click()
 
     # Navigate to Work Order Tracking
+    time.sleep(5)
     iframe = wait.until(EC.presence_of_element_located((By.XPATH, "/html/body/div/div[7]/iframe")))
     browser.switch_to.frame(iframe)
     wotrackElem = wait.until(EC.element_to_be_clickable((By.ID, "FavoriteApp_WOTRACK")))
@@ -132,8 +132,8 @@ def extract_maximo_status(browser, excel_file_path, excel_file_sheet):
     history = wait.until(EC.element_to_be_clickable((By.ID, "m6a7dfd2f_tfrow_[C:20]_txt-tb")))
     #history.click()
     history.send_keys(Keys.CONTROL + 'a', Keys.BACKSPACE)
-    history.send_keys('Y', Keys.ENTER)
-    time.sleep(5)
+    history.send_keys(Keys.ENTER)
+    time.sleep(3)
     print('History updated...')
     
     # Row 1 contains headers
@@ -148,11 +148,11 @@ def extract_maximo_status(browser, excel_file_path, excel_file_sheet):
                 searchWO_number.send_keys(Keys.CONTROL + 'a', Keys.BACKSPACE)
                 searchWO_number.send_keys(work_order_id)
                 searchWO_number.send_keys(Keys.ENTER)
-                time.sleep(5)
                 
                 try:
-                    status = wait.until(EC.element_to_be_clickable((By.ID, "m6a7dfd2f_tdrow_[C:13]-c[R:0]")))
-                    maximo_status = status.text
+                    time.sleep(3)
+                    status = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="m6a7dfd2f_tdrow_[C:13]-c[R:0]"]/span')))
+                    maximo_status = status.get_attribute('title') 
                     print(work_order_id, maximo_status)
                     
                     # Write Maximo status to Excel
