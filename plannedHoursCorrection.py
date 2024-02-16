@@ -28,7 +28,10 @@ def main():
 
     index, total = maximo_navigation(browser, start_date, end_date)
 
-    extraction_excel(browser, index, total)
+    excel_path = 'P:\All\Engineering\Projects\Python Scripts\Seiya SEP 2023-APR 2024\Maximo-Automation-Projects\PM Hours Correction Log.xlsx'
+    excel_page = 'Sep 2023'
+    
+    excel_saver(browser, index, total, excel_path, excel_page)
 
     print('We out')
     
@@ -136,7 +139,7 @@ def maximo_navigation(browser, start_date, end_date):
     findbutton.click() 
     
     # Find number of Work Orders
-    time.sleep(2)
+    time.sleep(5)
     wostring = wait.until(EC.element_to_be_clickable((By.ID, 'm6a7dfd2f-lb3')))
     match = re.search(r'\((\d+) - (\d+) of (\d+)\)', wostring.text)
 
@@ -151,17 +154,27 @@ def maximo_navigation(browser, start_date, end_date):
     print(f'Total Work Orders: {maxi}')
     return i, maxi
 
-def extraction_excel(browser, index, total):
+def excel_saver(browser, index, total, path, page):
     wait = WebDriverWait(browser, 20)
 
+    excel_wb = xw.Book(path)
+    excel_pg = excel_wb.sheets[page]
+
     # Cycle through each line and page (index begins at 1)
-    while index <= 1:#total:
+    while index <= total:
         print(f'Parsing Work Order {index} of {total}')
 
         # Navigate to Work Order
-        wo_html = f'm6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:{index - 1}]'
-        findwo = wait.until(EC.element_to_be_clickable((By.ID, wo_html)))
-        findwo.click()
+        if index == 1:
+            wo_html = f'm6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:{index - 1}]'
+            findwo = wait.until(EC.element_to_be_clickable((By.ID, wo_html)))
+            findwo.click()
+        else:
+            findwo = wait.until(EC.element_to_be_clickable((By.ID, 'toolactions_NEXT-tbb_anchor')))
+            findwo.click()
+            time.sleep(2)
+            nav2wo = wait.until(EC.element_to_be_clickable((By.ID,'mbf28cd64-tab_anchor')))
+            nav2wo.click()
 
         # Navigate in Work Order
         time.sleep(2)
@@ -177,7 +190,8 @@ def extraction_excel(browser, index, total):
         print(f'Work Type: {work_type}')
         job_plan = wait.until(EC.element_to_be_clickable((By.ID, 'mfe7bb84-tb'))).get_attribute('value')
         print(f'Job Plan: {job_plan}')
-        plan_hours = wait.until(EC.element_to_be_clickable((By.ID, 'm8c7fa385-tb'))).get_attribute('value') 
+        hours, minutes = map(int, wait.until(EC.element_to_be_clickable((By.ID, 'm8c7fa385-tb'))).get_attribute('value').split(':'))
+        plan_hours = hours + (minutes / 60)
         print(f'Planned Hours: {plan_hours}')
         
         # Navigate to Actuals
@@ -195,31 +209,68 @@ def extraction_excel(browser, index, total):
         rate = [None] * labor_max
 
         while j < labor_max:
-            print(f'Index {j} of {labor_max}')
+            time.sleep(2)
+            print(f'Index {j + 1} of {labor_max}')
+
             labor_html = f'm4dfd8aef_tdrow_[C:3]_txt-tb[R:{j}]'
             hours_html = f'm4dfd8aef_tdrow_[C:9]_txt-tb[R:{j}]'
             rate_html = f'm4dfd8aef_tdrow_[C:10]_txt-tb[R:{j}]'
-            print(labor_html)
-            print(hours_html)
-            print(rate_html)
 
             #if (wait.until(EC.element_to_be_clickable((By.ID, hours_html))).get_attribute('value') != '0:00'):
             laborer[j] = wait.until(EC.element_to_be_clickable((By.ID, labor_html))).get_attribute('value')
-            print(laborer[j])
-            real_hours[j] = wait.until(EC.element_to_be_clickable((By.ID, hours_html))).get_attribute('value')
-            print(real_hours[j])
+            hours, minutes = map(int, wait.until(EC.element_to_be_clickable((By.ID, hours_html))).get_attribute('value').split(':'))
+            real_hours[j] = hours + (minutes / 60)
             rate[j] = wait.until(EC.element_to_be_clickable((By.ID, rate_html))).get_attribute('value')
-            print(rate[j])
+            
+            print(f'{laborer[j]} worked for {real_hours[j]} at ${rate[j]} hourly')
+            
+            if j % 6 == 5:
+                pej_flipa = wait.until(EC.element_to_be_clickable((By.ID, 'm4dfd8aef-ti7')))
+                pej_flipa.click()
+                time.sleep(3)
+            
             j += 1
         
-        # line  1: m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:0]
-        # line  2: m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:1]
-        # line 20: m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:19]
+        # Excel Magic
+        last_row = excel_pg.range('I' + str(excel_pg.cells.last_cell.row)).end('up').row + 1
+        print(f'Next row: {last_row}')
 
-        # line  1: m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:20]
-        # line 20: m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:39]
+        excel_pg.range(f'A{last_row}').value = work_order
+        excel_pg.range(f'B{last_row}').value = description
+        excel_pg.range(f'C{last_row}').value = location
+        excel_pg.range(f'D{last_row}').value = equipment
+        excel_pg.range(f'E{last_row}').value = work_type
+        excel_pg.range(f'F{last_row}').value = job_plan
+        excel_pg.range(f'G{last_row}').value = plan_hours
+
+        j = 0; log_hours = 0
+        for rows in range(last_row, last_row + labor_max):
+            log_hours += real_hours[j]
+            excel_pg.range(f'I{last_row + j}').value = laborer[j]
+            excel_pg.range(f'J{last_row + j}').value = real_hours[j]
+            excel_pg.range(f'K{last_row + j}').value = rate[j]
+            j += 1
+        
+        excel_pg.range(f'H{last_row}').value = log_hours
+
+        end_merge = last_row + labor_max - 1
+        cols_merge = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+        for col in cols_merge:
+            merge_range = f'{col}{last_row}:{col}{end_merge}'
+            excel_pg.range(merge_range).api.Merge()
+        
+        #nav2list = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="mab323381_nc_list_button"]/ul/li/a')))
+        #nav2list.click()
+
+        #if (index - 1) % 20 == 19:
+            #time.sleep(2)
+            #paj_flipa = wait.until(EC.element_to_be_clickable((By.ID, 'm6a7dfd2f-ti7')))
+            #paj_flipa.click()
+
+        print('\n')
+        index += 1
+        time.sleep(2)
     #category, craft, process cond, desc, job plan #, planned hrs, new plan?, actusal hours, laborers
-    
 
 main()
 #Go to WO Tracking

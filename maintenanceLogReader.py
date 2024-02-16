@@ -48,7 +48,7 @@ def extract_and_write_excel(file_path, sheet, excel_file_path, excel_file_sheet)
     
     for rows in range(2, last_row+1):
         if (sheet.range(f'A{rows}').value == 'WORK DONE') or (sheet.range(f'A{rows}').value == 'WORK STATUS'):
-            work_done_index = rows;
+            work_done_index = rows
             print("Index:", work_done_index)
             break
 
