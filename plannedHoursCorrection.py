@@ -33,6 +33,7 @@ def main():
     
     excel_saver(browser, index, total, excel_path, excel_page)
 
+    print(f'That was {start_date} through {end_date}\n')
     print('We out')
     
     browser.quit()
@@ -170,11 +171,22 @@ def excel_saver(browser, index, total, path, page):
             findwo = wait.until(EC.element_to_be_clickable((By.ID, wo_html)))
             findwo.click()
         else:
-            findwo = wait.until(EC.element_to_be_clickable((By.ID, 'toolactions_NEXT-tbb_anchor')))
-            findwo.click()
-            time.sleep(2)
-            nav2wo = wait.until(EC.element_to_be_clickable((By.ID,'mbf28cd64-tab_anchor')))
-            nav2wo.click()
+            try:
+                findwo = wait.until(EC.element_to_be_clickable((By.ID, 'toolactions_NEXT-tbb_anchor')))
+                findwo.click()
+                time.sleep(2)
+                nav2wo = wait.until(EC.element_to_be_clickable((By.ID,'mbf28cd64-tab_anchor')))
+                nav2wo.click()
+
+            except: #system message
+                syserr = wait.until(EC.element_to_be_clickable((By.ID, 'm96ad0396-pb')))
+                syserr.click()
+                time.sleep(2)
+                findwo = wait.until(EC.element_to_be_clickable((By.ID, 'toolactions_NEXT-tbb_anchor')))
+                findwo.click()
+                time.sleep(2)
+                nav2wo = wait.until(EC.element_to_be_clickable((By.ID,'mbf28cd64-tab_anchor')))
+                nav2wo.click()
 
         # Navigate in Work Order
         time.sleep(2)
