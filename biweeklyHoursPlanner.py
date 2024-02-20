@@ -12,13 +12,14 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import re
 import datetime, time
 import xlwings as xw
 
 browser = webdriver.Edge() 
 
 wb = xw.Book(r'\\igashfs1\shared\All\SERVER REPORTS\2 Week Plan.xlsx') #excel workbook to be used
-sheet = xw.sheets[1] #increase sheet number biweekly, or hardcode name
+sheet = xw.sheets[2] #increase sheet number biweekly, or hardcode name
 
 #Changing what this script clicks on requires your browser dev tools
 #Each object has an ID, inspect element to hover over object, click to find ID
@@ -30,7 +31,7 @@ browser.maximize_window()
 
 # Extract login information
 credentials = {}
-with open('P:\All\Engineering\Seiya Nozawa-Temchenko\Maximo Automation\Maximo-Automation-Projects\config.txt', 'r') as file:
+with open('P:\All\Engineering\Projects\Python Scripts\Seiya SEP 2023-APR 2024\Maximo-Automation-Projects\config.txt', 'r') as file:
     for line in file:
         key, value = line.strip().split('=')
         credentials[key] = value
@@ -67,60 +68,52 @@ syear = str(dt.year) #year
 fmonth = str(ft.month) #month 14 days from today
 fday = str(ft.day) #day 14 days from today
 fyear = str(ft.year) #year 14 days from today
-time.sleep(1)
 
-searchElem = browser.find_element(By.XPATH, "//*[@id='quicksearch_QSButtonDiv']/div[2]") #search button
-actions.move_to_element(searchElem)
-time.sleep(1)
-actions.click()
-actions.perform()
-time.sleep(2)
+# Navigate to More Search Fields
+triple_dot = wait.until(EC.element_to_be_clickable((By.ID, 'quicksearchQSMenuImage')))
+triple_dot.click()
+more_search = wait.until(EC.element_to_be_clickable((By.ID, 'menu0_SEARCHMORE_OPTION_a')))
+more_search.click()
 
-search2Elem = browser.find_element(By.XPATH, "//*[@id='quicksearch_QSButtonDiv']/div[2]") #second search button
-actions.move_to_element_with_offset(search2Elem,0,50)
-time.sleep(1)
-actions.click()
-actions.perform()
+# Set Types to HKG, INR, or PPM
+types = wait.until(EC.element_to_be_clickable((By.ID, 'med325893-tb')))
+types.click()
+types.send_keys('=HKG,=INR,=PPM')
+
+# Garbage value to ensure things load
+garbage_value = wait.until(EC.element_to_be_clickable((By.ID, 'm8db33e5c-tb')))
+garbage_value.click()
+
+# Set Status to CLOSE, FINISHED, or WAITCLOSE
+status = wait.until(EC.element_to_be_clickable((By.ID, 'm449c436f-tb')))
+status.click()
+status.send_keys('=RELEASED,=WPLAN,=WSCHED')
+garbage_value.click()
+
+# Set Sched Start
+startget = wait.until(EC.element_to_be_clickable((By.ID, 'mafd0ceda-tb')))
+startget.click()
+startget.send_keys(smonth + '/' + sday + '/' + syear + ' 12:00 AM')    
+garbage_value.click()
+
+# Set Final Start
+finalget = wait.until(EC.element_to_be_clickable((By.ID, 'mac635e1a-tb')))
+finalget.click()
+finalget.send_keys(fmonth +'/' + fday + '/' +fyear + ' 12:00 AM')
+findbutton = wait.until(EC.element_to_be_clickable((By.ID, 'm4fd840b0-pb')))
+findbutton.click()
+
 time.sleep(5)
+wostring = wait.until(EC.element_to_be_clickable((By.ID, 'm6a7dfd2f-lb3')))
+match = re.search(r'\((\d+) - (\d+) of (\d+)\)', wostring.text)
 
-try:
-    typeElem = browser.find_element(By.ID, "med325893-tb") #type text box. If find by ID fails it will find using full xpath
-except:###NEW
-    typeElem = browser.find_element(By.XPATH, "/html/body/form/div/table[3]/tbody/tr/td[3]/table/tbody/tr[2]/th/table/tbody/tr/td/table[2]/tbody/tr/td/div/table/tbody/tr[1]/td/div/table/tbody/tr/td/table/tbody/tr/td[3]/div/table/tbody/tr/td/div/table/tbody/tr/td/table/tbody/tr[2]/td/input")
-    
-typeElem.send_keys('=HKG,=INR,=PPM') #types
-time.sleep(3)
-
-statusElem = browser.find_element(By.ID, "m449c436f-tb") #status textbox
-statusElem.send_keys('=RELEASED,=WPLAN,=WSCHED') #status types
-time.sleep(2)
-
-
-startElem = browser.find_element(By.ID, "m3cdc438b-tb") #start time text box
-startElem.send_keys(smonth + '/' + sday + '/' + syear + ' 12:00 AM') #send start time using the times gathered earlier
-time.sleep(3)
-finElem = browser.find_element(By.ID, "mac635e1a-tb") #final start time textbox
-time.sleep(2)
-finElem.click()
-time.sleep(1)
-finElem.send_keys(fmonth +'/' + fday + '/' +fyear + ' 12:00 AM') #send final start time using the times gathered earlier
-time.sleep(2)
-
-
-findElem = browser.find_element(By.ID, "m4fd840b0-pb") #find button
-findElem.click()
-time.sleep(4)
-numberofWOs = browser.find_element(By.ID, "m6a7dfd2f-lb3") #text that says number of WOs
-numberofWOs = numberofWOs.text #saves text in variable
-print(numberofWOs)
-
-if len(numberofWOs) == 14: #converts the whole string into just the number
-    numberofWOs = numberofWOs[11] + numberofWOs[12] #if the string is 14 characters long, only take the 11th and 12th character
+if match:
+    numberofWOs = int(match.group(3))
 else:
-    numberofWOs = numberofWOs[11] + numberofWOs[12] + numberofWOs[13] #otherwise use 11, 12, and 13 (3 figure number of work orders)
+    numberofWOs = 0
+    print("No results found in this time frame")
 
-numberofWOs = int(numberofWOs) #convert to integer
-
+print(f'Total Work Orders: {numberofWOs}')
 
 time.sleep(2)
 wo1Elem = browser.find_element(By.ID, "m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:0]") #change ID here if diff
@@ -238,7 +231,7 @@ while i<numberofWOs:
         
     nextElem = browser.find_element(By.ID, "toolactions_NEXT-tbb_image") #the next work order button
     type(nextElem)
-    time.sleep(30)
+    time.sleep(20)
     try:
         nextElem.click() #click next work order button
     except:###NEW

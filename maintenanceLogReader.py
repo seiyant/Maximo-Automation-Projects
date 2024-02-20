@@ -27,7 +27,7 @@ def main():
     # Location of the daily maintenance log checker
     excel_file_path = 'P:\All\Engineering\Projects\Python Scripts\Seiya SEP 2023-APR 2024\Maximo-Automation-Projects\Maintenance Daily Log Checker.xlsx'
     # Make a new sheet each month
-    excel_file_sheet = 'February 24' # change month
+    excel_file_sheet = 'January 24' # change month
     extract_and_write_excel(file_path, sheet, excel_file_path, excel_file_sheet)
     browser = webdriver.Edge()
     

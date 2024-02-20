@@ -12,7 +12,6 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from docx import Document
 import re
 import time
 import datetime
@@ -69,7 +68,7 @@ def date_ranger():
         fkey = str(fdate.month) + '/' + str(fdate.day) + '/' + str(fdate.year) + '/ 12:00 AM'
 
     dtime = fdate.date() - sdate.date()
-    print(f"Your given time frame is {dtime.days} days")
+    print(f'Your given time frame is {dtime.days} days')
 
     return skey, fkey
 
@@ -126,7 +125,7 @@ def maximo_navigation(browser, start_date, end_date):
     history.send_keys('Y')
     garbage_value.click()
     
-    # Set sched Start
+    # Set Sched Start
     startget = wait.until(EC.element_to_be_clickable((By.ID, 'mafd0ceda-tb')))
     startget.click()
     startget.send_keys(start_date)    
@@ -150,7 +149,7 @@ def maximo_navigation(browser, start_date, end_date):
     else:
         i = 0
         maxi = 0
-        print("No results in this time frame. If issue persists change the sleep length")
+        print('No results in this time frame. If issue persists change the sleep length')
 
     print(f'Total Work Orders: {maxi}')
     return i, maxi
@@ -255,29 +254,30 @@ def excel_saver(browser, index, total, path, page):
         excel_pg.range(f'F{last_row}').value = job_plan
         excel_pg.range(f'G{last_row}').value = plan_hours
 
-        j = 0; log_hours = 0
-        for rows in range(last_row, last_row + labor_max):
+        # Multi-row entries
+        log_hours = 0
+        for j in range(last_row, last_row + labor_max):
             log_hours += real_hours[j]
             excel_pg.range(f'I{last_row + j}').value = laborer[j]
             excel_pg.range(f'J{last_row + j}').value = real_hours[j]
             excel_pg.range(f'K{last_row + j}').value = rate[j]
-            j += 1
         
+        # Actual log hours
         excel_pg.range(f'H{last_row}').value = log_hours
 
+        # Hours deviation
+        excel_pg.range(f'L{last_row + j}').value = plan_hours - log_hours
+
+        # Weighed hours deviation
+        for j in range(last_row, last_row + labor_max):
+            excel_pg.range(f'M{last_row + j}').value = (plan_hours - log_hours) * excel_pg.range(f'K{last_row + j}').value / log_hours
+
+        # Merge rows for aesthetics
         end_merge = last_row + labor_max - 1
-        cols_merge = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+        cols_merge = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'L']
         for col in cols_merge:
             merge_range = f'{col}{last_row}:{col}{end_merge}'
             excel_pg.range(merge_range).api.Merge()
-        
-        #nav2list = wait.until(EC.element_to_be_clickable((By.XPATH, '//*[@id="mab323381_nc_list_button"]/ul/li/a')))
-        #nav2list.click()
-
-        #if (index - 1) % 20 == 19:
-            #time.sleep(2)
-            #paj_flipa = wait.until(EC.element_to_be_clickable((By.ID, 'm6a7dfd2f-ti7')))
-            #paj_flipa.click()
 
         print('\n')
         index += 1
