@@ -27,15 +27,17 @@ def main():
 
     index, total = maximo_navigation(browser, start_date, end_date)
 
-    excel_path = 'P:\All\Engineering\Projects\Python Scripts\Seiya SEP 2023-APR 2024\Maximo-Automation-Projects\PM Hours Correction Log.xlsx'
-    excel_page = 'Sep 2023'
+    excel_path = 'P:\All\SERVER REPORTS\PM Hours Correction Log.xlsx'
+    excel_page = '2022'
     
     excel_saver(browser, index, total, excel_path, excel_page)
+    
+    browser.quit()
+
+    #excel_analysis(excel_path, excel_page)
 
     print(f'That was {start_date} through {end_date}\n')
     print('We out')
-    
-    browser.quit()
 
 def date_ranger():
     # Today's date
@@ -74,7 +76,7 @@ def date_ranger():
 
 def maximo_navigation(browser, start_date, end_date):
     wait = WebDriverWait(browser, 20)
-    browser.get('https://prod.manage.prod.iko.max-it-eam.com/maximo')   
+    browser.get('https://test.manage.test.iko.max-it-eam.com/maximo')   
     browser.maximize_window()
 
     # Extract login information from text file
@@ -124,6 +126,12 @@ def maximo_navigation(browser, start_date, end_date):
     history.send_keys(Keys.CONTROL + 'a', Keys.BACKSPACE)
     history.send_keys('Y')
     garbage_value.click()
+
+    # Set Job Plan to GE*
+    jobplange = wait.until(EC.element_to_be_clickable((By.ID, 'm6cc85995-tb')))
+    jobplange.click()
+    jobplange.send_keys('GE*')
+    garbage_value.click()
     
     # Set Sched Start
     startget = wait.until(EC.element_to_be_clickable((By.ID, 'mafd0ceda-tb')))
@@ -160,20 +168,58 @@ def excel_saver(browser, index, total, path, page):
     excel_wb = xw.Book(path)
     excel_pg = excel_wb.sheets[page]
 
+    # Change index to leave off of where stop occurred
+    bypass = 724; index = bypass #could work faster with crtl f
+    
     # Cycle through each line and page (index begins at 1)
     while index <= total:
         print(f'Parsing Work Order {index} of {total}')
 
         # Navigate to Work Order
-        if index == 1:
+        if index == bypass: 
+            wo_html = f'm6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:0]'
+            findwo = wait.until(EC.element_to_be_clickable((By.ID, wo_html)))
+            findwo.click()
+            time.sleep(2)
+            p = 1
+            while p != index:
+                print(f'Moving to WO #{p}')
+                try:
+                    findwo = wait.until(EC.element_to_be_clickable((By.ID, 'toolactions_NEXT-tbb_anchor')))
+                    findwo.click()
+                    time.sleep(2)
+                    nav2wo = wait.until(EC.element_to_be_clickable((By.ID,'mbf28cd64-tab_anchor')))
+                    nav2wo.click()
+                    time.sleep(1)
+
+                except:
+                    try:
+                        sleep(2)
+                        nav2wo = wait.until(EC.element_to_be_clickable((By.ID,'mbf28cd64-tab_anchor')))
+                        nav2wo.click()
+                        
+                    except: #system message
+                        syserr = wait.until(EC.element_to_be_clickable((By.ID, 'm96ad0396-pb')))
+                        syserr.click()
+                        time.sleep(2)
+                        findwo = wait.until(EC.element_to_be_clickable((By.ID, 'toolactions_NEXT-tbb_anchor')))
+                        findwo.click()
+                        time.sleep(2)
+                        nav2wo = wait.until(EC.element_to_be_clickable((By.ID,'mbf28cd64-tab_anchor')))
+                        nav2wo.click()
+                p += 1
+
+                
+        elif index == 1:
             wo_html = f'm6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:{index - 1}]'
             findwo = wait.until(EC.element_to_be_clickable((By.ID, wo_html)))
             findwo.click()
+        
         else:
             try:
                 findwo = wait.until(EC.element_to_be_clickable((By.ID, 'toolactions_NEXT-tbb_anchor')))
                 findwo.click()
-                time.sleep(2)
+                time.sleep(3)
                 nav2wo = wait.until(EC.element_to_be_clickable((By.ID,'mbf28cd64-tab_anchor')))
                 nav2wo.click()
 
@@ -204,6 +250,10 @@ def excel_saver(browser, index, total, path, page):
         hours, minutes = map(int, wait.until(EC.element_to_be_clickable((By.ID, 'm8c7fa385-tb'))).get_attribute('value').split(':'))
         plan_hours = hours + (minutes / 60)
         print(f'Planned Hours: {plan_hours}')
+        if plan_hours == 0.0:
+            print('0 Planned Hours Error: Auto-rounding to 0.25 Planned Hours')
+            plan_hours = 0.25
+            print(f'Planned Hours: {plan_hours}')
         
         # Navigate to Actuals
         actuals = wait.until(EC.element_to_be_clickable((By.ID, 'm272f5640-tab_anchor')))
@@ -211,9 +261,22 @@ def excel_saver(browser, index, total, path, page):
 
         # There may be multiple laborers
         time.sleep(5)
+        
         labstring = wait.until(EC.element_to_be_clickable((By.ID, 'm4dfd8aef-lb3')))
         match = re.search(r'\((\d+) - (\d+) of (\d+)\)', labstring.text)
         labor_max = int(match.group(3))
+        
+        while int(match.group(1)) != 1:
+            if int(match.group(1)) == 0:
+                print(f'No laborers error, skipping work order...')
+            else:
+                labstring = wait.until(EC.element_to_be_clickable((By.ID, 'm4dfd8aef-lb3')))
+                match = re.search(r'\((\d+) - (\d+) of (\d+)\)', labstring.text)
+                print(f'Adjusting page...')
+                pej_ajussa = wait.until(EC.element_to_be_clickable((By.ID, 'm4dfd8aef-ti6')))
+                pej_ajussa.click()
+                time.sleep(3)
+        
         j = 0
         laborer = [None] * labor_max
         real_hours = [None] * labor_max
@@ -221,13 +284,13 @@ def excel_saver(browser, index, total, path, page):
 
         while j < labor_max:
             time.sleep(2)
+                
             print(f'Index {j + 1} of {labor_max}')
 
             labor_html = f'm4dfd8aef_tdrow_[C:3]_txt-tb[R:{j}]'
             hours_html = f'm4dfd8aef_tdrow_[C:9]_txt-tb[R:{j}]'
             rate_html = f'm4dfd8aef_tdrow_[C:10]_txt-tb[R:{j}]'
 
-            #if (wait.until(EC.element_to_be_clickable((By.ID, hours_html))).get_attribute('value') != '0:00'):
             laborer[j] = wait.until(EC.element_to_be_clickable((By.ID, labor_html))).get_attribute('value')
             hours, minutes = map(int, wait.until(EC.element_to_be_clickable((By.ID, hours_html))).get_attribute('value').split(':'))
             real_hours[j] = hours + (minutes / 60)
@@ -241,60 +304,71 @@ def excel_saver(browser, index, total, path, page):
                 time.sleep(3)
             
             j += 1
-        
-        # Excel Magic
-        last_row = excel_pg.range('I' + str(excel_pg.cells.last_cell.row)).end('up').row + 1
-        print(f'Next row: {last_row}')
+            
+        if labor_max != 0:
+            # Excel Magic
+            last_row = excel_pg.range('I' + str(excel_pg.cells.last_cell.row)).end('up').row + 1
+            print(f'Next row: {last_row}')
 
-        excel_pg.range(f'A{last_row}').value = work_order
-        excel_pg.range(f'B{last_row}').value = description
-        excel_pg.range(f'C{last_row}').value = location
-        excel_pg.range(f'D{last_row}').value = equipment
-        excel_pg.range(f'E{last_row}').value = work_type
-        excel_pg.range(f'F{last_row}').value = job_plan
-        excel_pg.range(f'G{last_row}').value = plan_hours
+            excel_pg.range(f'A{last_row}').value = work_order
+            excel_pg.range(f'B{last_row}').value = description
+            excel_pg.range(f'C{last_row}').value = location
+            excel_pg.range(f'D{last_row}').value = equipment
+            excel_pg.range(f'E{last_row}').value = work_type
+            excel_pg.range(f'F{last_row}').value = job_plan
+            excel_pg.range(f'G{last_row}').value = plan_hours
+            #cost doesnt matter
+            #try to only get GE ones
 
-        # Multi-row entries
-        log_hours = 0
-        for j in range(last_row, last_row + labor_max):
-            log_hours += real_hours[j]
-            excel_pg.range(f'I{last_row + j}').value = laborer[j]
-            excel_pg.range(f'J{last_row + j}').value = real_hours[j]
-            excel_pg.range(f'K{last_row + j}').value = rate[j]
-        
-        # Actual log hours
-        excel_pg.range(f'H{last_row}').value = log_hours
+            # Multi-row entries
+            log_hours = 0; j = 0
+            while j < labor_max:
+                log_hours += real_hours[j]
+                excel_pg.range(f'I{last_row + j}').value = laborer[j]
+                excel_pg.range(f'J{last_row + j}').value = real_hours[j]
+                excel_pg.range(f'K{last_row + j}').value = rate[j]
+                j += 1
+            
+            # Actual log hours
+            if log_hours != 0.0:
+                excel_pg.range(f'H{last_row}').value = log_hours
+            else:
+                print('0 Logged Hours Error: Auto-rounding to 0.25 Logged Hours')
+                log_hours = 0.25
+                print(f'Logged Hours: {log_hours}')
+                excel_pg.range(f'H{last_row}').value = log_hours
+                excel_pg.range(f'J{last_row}').value = log_hours
 
-        # Hours deviation
-        excel_pg.range(f'L{last_row + j}').value = plan_hours - log_hours
+            # Hours deviation
+            excel_pg.range(f'L{last_row}').value = log_hours - plan_hours
 
-        # Weighed hours deviation
-        for j in range(last_row, last_row + labor_max):
-            excel_pg.range(f'M{last_row + j}').value = (plan_hours - log_hours) * excel_pg.range(f'K{last_row + j}').value / log_hours
+            # Probability density
+            excel_pg.range(f'N{last_row}').value = f'=NORM.DIST(L{last_row},Q$3,Q$4,FALSE)'
+            
+            # Weighed hours deviation
+            j = 0
+            while j < labor_max:
+                excel_pg.range(f'M{last_row + j}').value = (log_hours - plan_hours) * (real_hours[j] / log_hours)
+                
+                # Probability density
+                excel_pg.range(f'N{last_row + j}').value = f'=NORM.DIST(L{last_row + j},Q$3,Q$4,FALSE)'
+                
+                j += 1
 
-        # Merge rows for aesthetics
-        end_merge = last_row + labor_max - 1
-        cols_merge = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'L']
-        for col in cols_merge:
-            merge_range = f'{col}{last_row}:{col}{end_merge}'
-            excel_pg.range(merge_range).api.Merge()
+            # Backfill empty spaces to be able to sort
+            col_copy = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'L']
+
+            for col in col_copy:
+                start_cell = f'{col}{last_row}'
+                end_cell = f'{col}{last_row + labor_max - 1}'
+                targ_range = excel_pg.range(f'{start_cell}:{end_cell}')
+                val_copy = excel_pg.range(start_cell).value
+                targ_range.value = val_copy
+            
 
         print('\n')
         index += 1
         time.sleep(2)
-    #category, craft, process cond, desc, job plan #, planned hrs, new plan?, actusal hours, laborers
+
 
 main()
-#Go to WO Tracking
-#Go to More Search Fields
-#Set History to 'Y'
-#Set Target Start to First of a month
-#Set Target Finish to Last day of a month
-# Target dates can be manually entered
-#Normal distribution of difference in work hours
-#Job plan copy and search again
-#Plans contain hours
-#Actual contains real work hours done
-
-#CONSIDERATIONS
-#Manage repeats, if information is identical

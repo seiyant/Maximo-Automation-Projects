@@ -21,13 +21,13 @@ import xlwings as xw
 # Main function 
 def main():
     # Change date, usually Wed, Thu, Sat
-    file_path = 'P:\All\Maintenance\Daily Maintenance Logs\Z Test Log.xlsm'
+    file_path = 'P:\All\Maintenance\Daily Maintenance Logs\Maintenance Log Reports\Standard Test Log.xlsm'
     sheet = 'Sheet1'
 
     # Location of the daily maintenance log checker
-    excel_file_path = 'P:\All\Engineering\Projects\Python Scripts\Seiya SEP 2023-APR 2024\Maximo-Automation-Projects\Maintenance Daily Log Checker.xlsx'
+    excel_file_path = 'P:\All\Maintenance\Daily Maintenance Logs\Maintenance Log Reports\Maintenance Daily Log Checker.xlsx'
     # Make a new sheet each month
-    excel_file_sheet = 'January 24' # change month
+    excel_file_sheet = 'March 24' # change month
     extract_and_write_excel(file_path, sheet, excel_file_path, excel_file_sheet)
     browser = webdriver.Edge()
     
@@ -169,6 +169,7 @@ def extract_maximo_status(browser, excel_file_path, excel_file_sheet):
                 print(work_order_id, 'NOT SURE')
         
     # Save the Excel file
+    print('Work orders complete...')
     wb.save()
 
 main()

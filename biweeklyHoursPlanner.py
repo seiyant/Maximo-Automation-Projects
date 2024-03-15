@@ -19,7 +19,7 @@ import xlwings as xw
 browser = webdriver.Edge() 
 
 wb = xw.Book(r'\\igashfs1\shared\All\SERVER REPORTS\2 Week Plan.xlsx') #excel workbook to be used
-sheet = xw.sheets[2] #increase sheet number biweekly, or hardcode name
+sheet = xw.sheets['March 3'] #increase sheet number biweekly, or hardcode name
 
 #Changing what this script clicks on requires your browser dev tools
 #Each object has an ID, inspect element to hover over object, click to find ID
@@ -115,11 +115,6 @@ else:
 
 print(f'Total Work Orders: {numberofWOs}')
 
-time.sleep(2)
-wo1Elem = wait.until(EC.element_to_be_clickable((By.ID, "m6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:0]"))) 
-wo1Elem.click() #click first work order
-time.sleep(1)
-
 i = 0
 while i < numberofWOs:
     # Navigate to Work Order
@@ -127,6 +122,7 @@ while i < numberofWOs:
         wo_html = f'm6a7dfd2f_tdrow_[C:1]_ttxt-lb[R:{i}]'
         findwo = wait.until(EC.element_to_be_clickable((By.ID, wo_html)))
         findwo.click()
+        time.sleep(2)
     else:
         try:
             findwo = wait.until(EC.element_to_be_clickable((By.ID, 'toolactions_NEXT-tbb_anchor')))
@@ -144,9 +140,9 @@ while i < numberofWOs:
             time.sleep(2)
             nav2wo = wait.until(EC.element_to_be_clickable((By.ID,'mbf28cd64-tab_anchor')))
             nav2wo.click()
+            time.sleep(2)
 
     # Navigate in Work Order
-    time.sleep(2)
     WO = wait.until(EC.element_to_be_clickable((By.ID, 'm52945e17-tb'))).get_attribute('value')
     print(f'Work Order: {WO}')
     description = wait.until(EC.element_to_be_clickable((By.ID, 'md42b94ac-tb'))).get_attribute('value')
@@ -198,6 +194,7 @@ while i < numberofWOs:
         sheet['E' + str(5+i)].value = 0.5 
 
     print(f'Work Order {WO} completed...')
+    i += 1
 
 wb.save() 
 browser.quit()
