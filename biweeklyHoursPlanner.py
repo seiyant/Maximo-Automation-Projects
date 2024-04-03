@@ -18,8 +18,8 @@ import xlwings as xw
 
 browser = webdriver.Edge() 
 
-wb = xw.Book(r'\\igashfs1\shared\All\SERVER REPORTS\2 Week Plan.xlsx') #excel workbook to be used
-sheet = xw.sheets['March 3'] #increase sheet number biweekly, or hardcode name
+wb = xw.Book(r'P:\All\SERVER REPORTS\2 Week Plan.xlsx') #excel workbook to be used
+sheet = xw.sheets['April 1'] #increase sheet number biweekly, or hardcode name
 
 #Changing what this script clicks on requires your browser dev tools
 #Each object has an ID, inspect element to hover over object, click to find ID
@@ -87,16 +87,16 @@ garbage_value.click()
 # Set Status to CLOSE, FINISHED, or WAITCLOSE
 status = wait.until(EC.element_to_be_clickable((By.ID, 'm449c436f-tb')))
 status.click()
-status.send_keys('=RELEASED,=WPLAN,=WSCHED')
+status.send_keys('=RELEASED,=WPLAN,=WSCHED,=WKIT')
 garbage_value.click()
 
-# Set Sched Start
-startget = wait.until(EC.element_to_be_clickable((By.ID, 'mafd0ceda-tb')))
+# Set Target Start
+startget = wait.until(EC.element_to_be_clickable((By.ID, 'm3cdc438b-tb')))
 startget.click()
 startget.send_keys(smonth + '/' + sday + '/' + syear + ' 12:00 AM')    
 garbage_value.click()
 
-# Set Final Start
+# Set Final Target Start
 finalget = wait.until(EC.element_to_be_clickable((By.ID, 'mac635e1a-tb')))
 finalget.click()
 finalget.send_keys(fmonth +'/' + fday + '/' +fyear + ' 12:00 AM')
