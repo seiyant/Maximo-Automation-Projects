@@ -27,8 +27,8 @@ def main():
 
     index, total = maximo_navigation(browser, start_date, end_date)
 
-    excel_path = 'P:\All\SERVER REPORTS\PM Hours Correction.xlsx'
-    excel_page = '2022'
+    excel_path = 'P:\All\SERVER REPORTS\PM Hours Correction.xlsm'
+    excel_page = '2024'
     excel_page2 = 'Statistics'
     
     excel_saver(browser, index, total, excel_path, excel_page, excel_page2)
@@ -172,7 +172,7 @@ def excel_saver(browser, index, total, path, page, page2):
     sh2 = wb.sheets[page2]
 
     # Change index to leave off of where stop occurred
-    bypass = -113; #index = bypass 
+    bypass = -20; #index = bypass 
     
     # Cycle through each line and page (index begins at 1)
     while index <= total:
@@ -318,24 +318,30 @@ def excel_saver(browser, index, total, path, page, page2):
                 time.sleep(3)
             
             j += 1
+            
+        print(f'Total Hours: {total_real_hours}')
         
         # Loop for data entry if labor is not 0
         if (labor_max - adjust_j) > 0:
             # Excel Magic
             last_row1 = sh1.range('I' + str(sh1.cells.last_cell.row)).end('up').row + 1
             last_row2 = sh2.range('A' + str(sh2.cells.last_cell.row)).end('up').row
-            print(f'Next row: {last_row1}')
 
+            print(f'Entering main information to row {last_row1}...')
             sh1.range(f'A{last_row1}').value = job_plan
             sh1.range(f'B{last_row1}').value = work_type
             sh1.range(f'C{last_row1}').value = description
             sh1.range(f'D{last_row1}').value = work_order
             sh1.range(f'E{last_row1}').value = plan_hours
             sh1.range(f'F{last_row1}').value = total_real_hours
+            sh1.range(f'AL{last_row1}').value = '=(F{last_row1} - E{last_row1}) / E{last_row1}'
+            sh1.range(f'AM{last_row1}').value = '=NORM.DIST(AL{last_row1}, AK$2, AL$2, FALSE)'
 
             # Statistics section entry
             labor_column = 7 # 7 is column G
+            quantity = 0
             for laborer, labor_hours in labor_hours.items():
+                print(f'Entering {laborer} information to row {last_row1}...')
                 labor_cell = f'{chr(64 + labor_column)}{last_row1}' # A is 64 in ASCII
                 sh1.range(labor_cell).value = laborer
                 labor_column += 1
@@ -343,24 +349,26 @@ def excel_saver(browser, index, total, path, page, page2):
                 # Statistics Section
                 laborer_found = False
                 search_range = sh2.range(f'A1:A' + str(last_row2))
-                
+
                 for cell in search_range:
                     if cell.value == laborer:
                         laborer_found = True
                         current_row = cell.row + 2  # Start looking after the headers
                         
                         # Insert the new row before the next laborer's name (if exists) or in the next empty row
+                        print(f'Entering {laborer} statistics section to row {current_row}...')
                         sh2.range(f'A{current_row}:F{current_row}').api.Insert(Shift=xw.constants.InsertShiftDirection.xlShiftDown)
-                        sh2.range(f'A{current_row}:F{current_row}').value = [job_plan, work_type, description, work_order, (int(plan_hours) / int(plan_qty)), labor_hours]
+                        sh2.range(f'A{current_row}:F{current_row}').value = [job_plan, work_type, description, work_order, "={float(plan_hours)}/'2024'!AK{current_row}", labor_hours, '(F{current_row}-E{current_row})/E{current_row}']
                         break
                 if not laborer_found:
                     # Laborer not found, add at the end
                     last_row2 = sh2.range('A' + str(sh2.cells.last_cell.row)).end('up').row + 2  # Update the last_row2 to reflect the new last row
+                    print(f'Entering {laborer} statistics section to row {last_row2}...')
                     sh2.range(f'A{last_row2}').value = laborer
-                    sh2.range(f'A{last_row2 + 1}').value = ["Job Plan", "Work Type", "Description", "Work Order", "Planned Hours", "Actual Hours"]
-                    sh2.range(f'A{last_row2 + 2}').value = [job_plan, work_type, description, work_order, (int(plan_hours) / int(plan_qty)), labor_hours]
-#add in % difference and prob dist function for statistics
+                    sh2.range(f'A{last_row2 + 1}').value = ["Job Plan", "Work Type", "Description", "Work Order", "Planned Hours", "Actual Hours", "Difference"]
+                    sh2.range(f'A{last_row2 + 2}').value = [job_plan, work_type, description, work_order, "={float(plan_hours)}/'2024'!AK{last_row2 + 2}", labor_hours, '(F{last_row2 + 2}-E{last_row2 + 2})/E{last_row2 + 2}']
 
+        print('Moving onto next work order...')
         print('\n')
         index += 1
         time.sleep(2)

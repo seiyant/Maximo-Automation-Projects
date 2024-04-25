@@ -21,7 +21,7 @@ import xlwings as xw
 # Main function 
 def main():
     # Change date, usually Wed, Thu, Sat
-    #file_path = 'P:\All\Maintenance\Daily Maintenance Logs\March 29, 2024 Maintenance Daily Log.xlsm'
+    #file_path = 'P:\All\Maintenance\Daily Maintenance Logs\April 20, 2024 Maintenance Daily Log.xlsm'
     file_path = 'P:\All\Maintenance\Daily Maintenance Logs\Maintenance Log Reports\Standard Test Log.xlsm'
     sheet = 'Sheet1'
 

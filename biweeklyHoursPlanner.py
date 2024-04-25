@@ -19,7 +19,7 @@ import xlwings as xw
 browser = webdriver.Edge() 
 
 wb = xw.Book(r'P:\All\SERVER REPORTS\2 Week Plan.xlsx') #excel workbook to be used
-sheet = xw.sheets['April 1'] #increase sheet number biweekly, or hardcode name
+sheet = xw.sheets['April 15'] #increase sheet number biweekly, or hardcode name
 
 #Changing what this script clicks on requires your browser dev tools
 #Each object has an ID, inspect element to hover over object, click to find ID
