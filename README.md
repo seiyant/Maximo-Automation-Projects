@@ -1,6 +1,4 @@
-```bash 
-biweeklyHoursPlanner.py
-```
+# biweeklyHoursPlanner.py
 
 **Description:**  
 This script gathers work orders scheduled for the upcoming two weeks to calculate the total expected work hours.
